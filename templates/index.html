@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stox! LIVE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
+</head>
+<body>
+    <div class="yf-wrapper">
+        <!-- Yahoo Finance Header -->
+        <header class="yf-navbar">
+            <div class="brand">
+                <span class="yf-logo">Stox! <span>Live</span></span>
+            </div>
+            <form id="searchForm" class="yf-search-box">
+                <input type="text" id="searchInput" placeholder="Search symbols (e.g. AAPL, NVDA, TSLA)..." required />
+                <button type="submit">Search</button>
+            </form>
+            <div class="market-status">
+                <span class="status-dot"></span> U.S. Markets Open
+            </div>
+        </header>
+
+        <!-- Dynamic Ticker Tape -->
+        <div class="ticker-tape">
+            <div class="ticker-item"><span>S&P 500</span> <strong>5,117.09</strong> <span class="up">+0.42%</span></div>
+            <div class="ticker-item"><span>Dow 30</span> <strong>38,989.84</strong> <span class="down">-0.11%</span></div>
+            <div class="ticker-item"><span>Nasdaq</span> <strong>16,207.51</strong> <span class="up">+0.80%</span></div>
+            <div class="ticker-item"><span>Russell 2000</span> <strong>2,076.35</strong> <span class="up">+0.25%</span></div>
+        </div>
+
+        <div id="messageBox" class="yf-alert hidden"></div>
+
+        <div id="loadingSection" class="yf-loading hidden">
+            <div class="yf-spinner"></div>
+            <p>Fetching real-time market data & Groq AI insights...</p>
+        </div>
+
+        <main id="dashboard" class="dashboard hidden">
+            <!-- Stock Banner Header -->
+            <section class="yf-stock-header">
+                <div>
+                    <h1 id="stockSymbol">Company Name (TICKER)</h1>
+                    <p id="tradingDate" class="yf-muted">NasdaqGS - Real-Time Price ($USD)</p>
+                </div>
+                <div class="yf-price-block">
+                    <div class="price-row">
+                        <span id="currentPrice" class="price-big">$0.00</span>
+                        <span id="livePulse" class="pulse-indicator"></span>
+                    </div>
+                    <span id="priceChange" class="price-change up">+$0.00 (+0.00%)</span>
+                </div>
+            </section>
+
+            <div class="yf-grid">
+                <!-- Main Chart Column -->
+                <div class="main-column">
+                    <!-- Real-Time TradingView Candlestick Chart Widget -->
+                    <article class="yf-card chart-card">
+                        <div class="card-header">
+                            <h2>Live Candlestick Market Chart</h2>
+                            <span class="badge">Real-Time Feed</span>
+                        </div>
+                        <div id="tradingview-container" class="chart-container">
+                            <!-- Injected dynamically via app.js -->
+                        </div>
+                    </article>
+
+                    <!-- Key Indicators Table -->
+                    <article class="yf-card">
+                        <h2>Key Statistics & Fundamentals</h2>
+                        <div class="stats-grid">
+                            <div class="stat-item"><span>Previous Close</span><strong id="previousClose">$0.00</strong></div>
+                            <div class="stat-item"><span>Day's Range</span><strong id="dayRange">$0.00 - $0.00</strong></div>
+                            <div class="stat-item"><span>Volume</span><strong id="volume">0</strong></div>
+                            <div class="stat-item"><span>52 Week Range</span><strong id="range52">$0.00 - $0.00</strong></div>
+                            <div class="stat-item"><span>Volatility</span><strong id="volatility">Moderate</strong></div>
+                            <div class="stat-item"><span>Risk Profile</span><strong id="riskLevel">Medium</strong></div>
+                        </div>
+                    </article>
+
+                    <!-- Yahoo Style News Grid -->
+                    <article class="yf-card">
+                        <div class="card-header">
+                            <h2>Recent News Coverage</h2>
+                            <span id="newsSentiment" class="sentiment-badge buy">Bullish</span>
+                        </div>
+                        <div id="newsList" class="news-grid"></div>
+                    </article>
+                </div>
+
+                <!-- AI Analysis Side Panel -->
+                <aside class="sidebar-column">
+                    <article class="yf-card ai-card">
+                        <div class="card-header">
+                            <h2>Groq AI Analytics</h2>
+                            <span id="aiSentiment" class="sentiment-badge buy">BUY</span>
+                        </div>
+
+                        <div class="confidence-box">
+                            <span>AI Confidence Score</span>
+                            <strong id="aiConfidence">0%</strong>
+                        </div>
+
+                        <div class="ai-section">
+                            <h3>Market Executive Summary</h3>
+                            <p id="aiSummary">Loading AI analysis...</p>
+                        </div>
+
+                        <!-- AI Predicted Next Moves -->
+                        <div class="next-move-box">
+                            <div class="next-move-header">
+                                <strong>🎯 AI Target & Next Move</strong>
+                                <span id="predictedDirectionBadge" class="sentiment-badge neutral">NEUTRAL</span>
+                            </div>
+                            <div class="next-move-details">
+                                <div><span>Target Price:</span> <strong id="targetPrice" class="accent">—</strong></div>
+                                <div><span>Expected Range:</span> <strong id="predictedRange">—</strong></div>
+                            </div>
+                            <p id="nextMoveReasoning"></p>
+                        </div>
+
+                        <div class="ai-section">
+                            <h3>Technical Outlook</h3>
+                            <p id="aiOutlook">Loading...</p>
+                        </div>
+
+                        <div class="ai-factors">
+                            <div class="factor-group positive">
+                                <h4>Key Strengths</h4>
+                                <ul id="positiveFactors"></ul>
+                            </div>
+                            <div class="factor-group negative">
+                                <h4>Risk Factors</h4>
+                                <ul id="riskFactors"></ul>
+                            </div>
+                        </div>
+
+                        <p class="ai-source">Powered by Groq AI (Llama-3.3-70b)</p>
+                    </article>
+                </aside>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}?v=3.0"></script>
+</body>
+</html>
