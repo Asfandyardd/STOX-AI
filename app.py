@@ -5,9 +5,12 @@ from flask import Flask, render_template, jsonify
 import yfinance as yf
 from groq import Groq
 from dotenv import load_dotenv
-
+import requests
 load_dotenv()
 
+# Create a custom session with a browser user-agent to prevent 429 blocks
+session = requests.Session()
+session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 app = Flask(__name__)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable static file caching in dev
 
