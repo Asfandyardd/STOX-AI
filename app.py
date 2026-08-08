@@ -7,7 +7,6 @@ from groq import Groq
 from dotenv import load_dotenv
 import requests
 load_dotenv()
-
 # Configure session to mimic a real browser and bypass consent redirects
 session = requests.Session()
 session.headers.update({
@@ -150,6 +149,7 @@ def get_news(symbol):
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({"overallSentiment": "Neutral", "articles": []})
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
