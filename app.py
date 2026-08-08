@@ -3,6 +3,7 @@ import json
 import traceback
 from flask import Flask, render_template, jsonify
 import pandas as pd
+import requests
 from groq import Groq
 from dotenv import load_dotenv
 
@@ -15,24 +16,36 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
 def fetch_stooq_data(symbol):
-    """Fetch stock market data reliably using Stooq CSV endpoint (no rate limits/blocks)"""
     clean_symbol = symbol.strip().upper()
-    url = f"https://stooq.com/q/l/?s={clean_symbol}.us&f=sd2t2ohlcv&h&e=csv"
+    # Try with .us extension first, then fallback to raw symbol
+    urls = [
+        f"https://stooq.com/q/l/?s={clean_symbol}.us&f=sd2t2ohlcv&h&e=csv",
+        f"https://stooq.com/q/l/?s={clean_symbol}&f=sd2t2ohlcv&h&e=csv"
+    ]
     
-    df = pd.read_csv(url)
-    if df.empty or 'Close' not in df.columns:
-        raise ValueError("Invalid symbol or data not found.")
-        
-    close_val = df['Close'].values[0]
-    if pd.isna(close_val) or str(close_val).upper() == 'N/D':
-        # Try without extension just in case
-        url_alt = f"https://stooq.com/q/l/?s={clean_symbol}&f=sd2t2ohlcv&h&e=csv"
-        df = pd.read_csv(url_alt)
-        close_val = df['Close'].values[0]
-        if pd.isna(close_val) or str(close_val).upper() == 'N/D':
-            raise ValueError("Stock symbol not found.")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
 
-    price = float(close_val)
+    df = None
+    for url in urls:
+        try:
+            response = requests.get(url, headers=headers, timeout=5)
+            if response.status_code == 200 and len(response.text) > 50:
+                from io import StringIO
+                temp_df = pd.read_csv(StringIO(response.text))
+                if not temp_df.empty and 'Close' in temp_df.columns:
+                    val = temp_df['Close'].values[0]
+                    if not pd.isna(val) and str(val).upper() != 'N/D':
+                        df = temp_df
+                        break
+        except Exception:
+            continue
+
+    if df is None:
+        raise ValueError(f"Stock symbol '{clean_symbol}' not found.")
+
+    price = float(df['Close'].values[0])
     high = float(df['High'].values[0]) if not pd.isna(df['High'].values[0]) else price
     low = float(df['Low'].values[0]) if not pd.isna(df['Low'].values[0]) else price
     open_p = float(df['Open'].values[0]) if not pd.isna(df['Open'].values[0]) else price
