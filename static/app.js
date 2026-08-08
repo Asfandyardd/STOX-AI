@@ -42,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (companyRes.error) throw new Error(companyRes.error);
 
             renderCompanyData(companyRes);
-            renderTradingViewWidget(symbol);
+            // Pass the correct dynamic exchange from backend data (e.g., NYMEX, COMEX, BINANCE, NASDAQ)
+            renderTradingViewWidget(companyRes.symbol, companyRes.exchange);
             renderAIData(aiRes);
             renderNewsData(newsRes);
 
@@ -76,21 +77,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('range52').textContent = `$${data.fiftyTwoWeekLow.toFixed(2)} - $${data.fiftyTwoWeekHigh.toFixed(2)}`;
     }
 
-    function renderTradingViewWidget(symbol) {
+    function renderTradingViewWidget(symbol, exchange) {
         const container = document.getElementById('tradingview-container');
         if (!container) return;
 
         const cleanSymbol = symbol.includes(':') ? symbol.split(':')[1] : symbol;
+        const validExchange = exchange || 'NASDAQ';
+        const fullTicker = `${validExchange}:${cleanSymbol}`;
 
         container.innerHTML = `
             <iframe 
-                src="https://s.tradingview.com/widgetembed/?symbol=NASDAQ%3A${cleanSymbol}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
+                src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
                 style="width: 100%; height: 100%; border: none;" 
                 allowtransparency="true" 
                 scrolling="no">
             </iframe>
         `;
     }
+
     function renderAIData(ai) {
         if (ai.error) return;
 
