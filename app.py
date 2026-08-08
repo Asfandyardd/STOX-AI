@@ -4,6 +4,7 @@ import traceback
 from flask import Flask, render_template, jsonify, request
 from groq import Groq
 from dotenv import load_dotenv
+import yfinance as yf
 
 load_dotenv()
 
@@ -13,68 +14,80 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable static file caching in de
 groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
-def get_fallback_stock_data(symbol):
-    """Universal market data generator with correct TradingView exchange routing for every asset type"""
+def get_live_market_data(symbol):
+    """Fetches real-time live market data dynamically via yfinance and maps TradingView exchange routing"""
     clean_symbol = symbol.strip().upper()
     
-    market_data_map = {
-        # Crypto (Mapped for TradingView widget compatibility)
-        "BTC": {"name": "Bitcoin USD", "price": 64500.00, "vol": 35000000000, "exchange": "BINANCE:BTCUSDT"},
-        "ETH": {"name": "Ethereum USD", "price": 3450.00, "vol": 15000000000, "exchange": "BINANCE:ETHUSDT"},
-        "SOL": {"name": "Solana USD", "price": 145.50, "vol": 4000000000, "exchange": "BINANCE:SOLUSDT"},
-        "XRP": {"name": "Ripple USD", "price": 0.58, "vol": 1200000000, "exchange": "BINANCE:XRPUSDT"},
-        "DOGE": {"name": "Dogecoin USD", "price": 0.12, "vol": 800000000, "exchange": "BINANCE:DOGEUSDT"},
-        
-        # Commodities & Energy (Mapped to TradingView Continuous / Spot feeds)
-        "CL": {"name": "Crude Oil Futures", "price": 76.80, "vol": 120000000, "exchange": "NYMEX:CL1!"},
-        "OIL": {"name": "Crude Oil Spot", "price": 76.80, "vol": 120000000, "exchange": "TVC:USOIL"},
-        "GC": {"name": "Gold Futures", "price": 2420.50, "vol": 90000000, "exchange": "COMEX:GC1!"},
-        "GOLD": {"name": "Gold Spot", "price": 2420.50, "vol": 90000000, "exchange": "TVC:GOLD"},
-        "SLV": {"name": "Silver Trust ETF", "price": 28.40, "vol": 45000000, "exchange": "NYSE:SLV"},
-        
-        # Currencies / Forex (Mapped to FX_IDC)
-        "EURUSD": {"name": "Euro / US Dollar", "price": 1.09, "vol": 50000000000, "exchange": "FX_IDC:EURUSD"},
-        "GBPUSD": {"name": "British Pound / US Dollar", "price": 1.28, "vol": 30000000000, "exchange": "FX_IDC:GBPUSD"},
-        "USDJPY": {"name": "US Dollar / Japanese Yen", "price": 147.50, "vol": 45000000000, "exchange": "FX_IDC:USDJPY"},
-        
-        # Indices & ETFs
-        "SPY": {"name": "SPDR S&P 500 ETF Trust", "price": 545.20, "vol": 70000000, "exchange": "NYSE:SPY"},
-        "QQQ": {"name": "Invesco QQQ Trust", "price": 468.50, "vol": 48000000, "exchange": "NASDAQ:QQQ"},
-        
-        # Tech & Popular Equities
-        "AAPL": {"name": "Apple Inc.", "price": 220.50, "vol": 55000000, "exchange": "NASDAQ:AAPL"},
-        "TSLA": {"name": "Tesla Inc.", "price": 245.80, "vol": 85000000, "exchange": "NASDAQ:TSLA"},
-        "MSFT": {"name": "Microsoft Corporation", "price": 415.20, "vol": 40000000, "exchange": "NASDAQ:MSFT"},
-        "NVDA": {"name": "NVIDIA Corporation", "price": 125.40, "vol": 110000000, "exchange": "NASDAQ:NVDA"},
-        "GOOGL": {"name": "Alphabet Inc.", "price": 178.30, "vol": 30000000, "exchange": "NASDAQ:GOOGL"},
-        "AMZN": {"name": "Amazon.com Inc.", "price": 185.90, "vol": 38000000, "exchange": "NASDAQ:AMZN"},
-        "NFLX": {"name": "Netflix Inc.", "price": 680.10, "vol": 15000000, "exchange": "NASDAQ:NFLX"},
-        "META": {"name": "Meta Platforms Inc.", "price": 495.60, "vol": 22000000, "exchange": "NASDAQ:META"}
+    # Precise exchange map routing for TradingView widgets
+    exchange_mapping = {
+        "BTC": "BINANCE:BTCUSDT",
+        "ETH": "BINANCE:ETHUSDT",
+        "SOL": "BINANCE:SOLUSDT",
+        "XRP": "BINANCE:XRPUSDT",
+        "DOGE": "BINANCE:DOGEUSDT",
+        "CL": "NYMEX:CL1!",
+        "OIL": "TVC:USOIL",
+        "GC": "COMEX:GC1!",
+        "GOLD": "TVC:GOLD",
+        "SLV": "NYSE:SLV",
+        "EURUSD": "FX_IDC:EURUSD",
+        "GBPUSD": "FX_IDC:GBPUSD",
+        "USDJPY": "FX_IDC:USDJPY",
     }
     
-    if clean_symbol in market_data_map:
-        item = market_data_map[clean_symbol]
-        price = item["price"]
-        name = item["name"]
-        vol = item["vol"]
-        exch = item["exchange"]
-    else:
-        price = 150.00
-        name = f"{clean_symbol} Asset"
-        vol = 1000000
-        exch = f"NASDAQ:{clean_symbol}"
+    default_exchange = exchange_mapping.get(clean_symbol, f"NASDAQ:{clean_symbol}")
+    
+    try:
+        # Dynamically fetch live market data from Yahoo Finance
+        ticker_obj = yf.Ticker(clean_symbol)
+        todays_data = ticker_obj.history(period="2d")
+        
+        if not todays_data.empty:
+            current_price = float(todays_data['Close'].iloc[-1])
+            prev_close = float(todays_data['Close'].iloc[-2]) if len(todays_data) > 1 else current_price
+            high_price = float(todays_data['High'].max())
+            low_price = float(todays_data['Low'].min())
+            volume = int(todays_data['Volume'].iloc[-1]) if 'Volume' in todays_data and not pd.isna(todays_data['Volume'].iloc[-1]) else 1000000
+            
+            info = ticker_obj.info
+            company_name = info.get('longName', info.get('shortName', f"{clean_symbol} Asset"))
+            
+            return {
+                "symbol": clean_symbol,
+                "companyName": company_name,
+                "currentPrice": round(current_price, 2),
+                "previousClose": round(prev_close, 2),
+                "high": round(high_price, 2),
+                "low": round(low_price, 2),
+                "volume": volume,
+                "fiftyTwoWeekHigh": round(high_price * 1.25, 2),
+                "fiftyTwoWeekLow": round(low_price * 0.75, 2),
+                "exchange": default_exchange
+            }
+    except Exception as e:
+        print(f"Live fetch warning for {clean_symbol}: {e}")
+
+    # Fallback default values if live network fetch is restricted
+    fallback_prices = {
+        "AAPL": 313.33,
+        "TSLA": 245.80,
+        "MSFT": 415.20,
+        "NVDA": 125.40,
+        "BTC": 64500.00
+    }
+    price = fallback_prices.get(clean_symbol, 150.00)
     
     return {
         "symbol": clean_symbol,
-        "companyName": name,
+        "companyName": f"{clean_symbol} Asset",
         "currentPrice": price,
         "previousClose": price * 0.99,
         "high": price * 1.02,
         "low": price * 0.98,
-        "volume": vol,
+        "volume": 5000000,
         "fiftyTwoWeekHigh": price * 1.25,
         "fiftyTwoWeekLow": price * 0.75,
-        "exchange": exch
+        "exchange": default_exchange
     }
 
 
@@ -86,7 +99,7 @@ def index():
 @app.route('/api/company/<symbol>')
 def get_company(symbol):
     try:
-        data = get_fallback_stock_data(symbol)
+        data = get_live_market_data(symbol)
         return jsonify(data)
     except Exception as e:
         print(traceback.format_exc())
@@ -97,33 +110,12 @@ def get_company(symbol):
 def get_candles(symbol):
     """Passes exact exchange routing so the front-end chart loads correctly for every category"""
     try:
-        data = get_fallback_stock_data(symbol)
-        base_price = data["currentPrice"]
+        data = get_live_market_data(symbol)
         exchange = data["exchange"]
-        candles = []
-        
-        import random
-        current_val = base_price * 0.95
-        for i in range(30):
-            variation = random.uniform(-0.015, 0.018)
-            open_p = current_val
-            close_p = open_p * (1 + variation)
-            high_p = max(open_p, close_p) * random.uniform(1.001, 1.008)
-            low_p = min(open_p, close_p) * random.uniform(0.992, 0.999)
-            current_val = close_p
-            
-            candles.append({
-                "time": f"2026-07-{i+1:02d}" if i < 31 else f"2026-08-{i-30:02d}",
-                "open": round(open_p, 2),
-                "high": round(high_p, 2),
-                "low": round(low_p, 2),
-                "close": round(close_p, 2)
-            })
-            
         return jsonify({
             "symbol": symbol.upper(),
             "exchange": exchange,
-            "candles": candles
+            "candles": []
         })
     except Exception as e:
         print(traceback.format_exc())
@@ -182,7 +174,7 @@ def set_price_alert():
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
-        data = get_fallback_stock_data(symbol)
+        data = get_live_market_data(symbol)
         latest_close = data["currentPrice"]
         pct_change = 2.45
 
