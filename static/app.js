@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (companyRes.error) throw new Error(companyRes.error);
 
             renderCompanyData(companyRes);
-            // Pass the correct dynamic exchange from backend data (e.g., NYMEX, COMEX, BINANCE, NASDAQ)
             renderTradingViewWidget(companyRes.symbol, companyRes.exchange);
             renderAIData(aiRes);
             renderNewsData(newsRes);
@@ -81,9 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('tradingview-container');
         if (!container) return;
 
-        const cleanSymbol = symbol.includes(':') ? symbol.split(':')[1] : symbol;
-        const validExchange = exchange || 'NASDAQ';
-        const fullTicker = `${validExchange}:${cleanSymbol}`;
+        // If exchange string already contains the full ticker syntax (e.g., "NYMEX:CL1!" or "BINANCE:BTCUSDT"), use it directly.
+        let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
         container.innerHTML = `
             <iframe 
