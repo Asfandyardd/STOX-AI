@@ -15,24 +15,20 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
 def get_live_market_data(symbol):
-    """Dynamically links any searched ticker straight to live market feeds matching TradingView routing"""
+    """Dynamically links searched assets directly to match live chart feeds"""
     clean_symbol = symbol.strip().upper()
     
-    # Universal Dynamic Exchange Matcher (No manual asset dictionaries)
+    # Precise Exchange Routing matching TradingView charts
     if clean_symbol in ["GOLD", "GC"]:
         exchange_symbol = "TVC:GOLD"
     elif clean_symbol in ["OIL", "USOIL", "CL"]:
         exchange_symbol = "TVC:USOIL"
-    elif clean_symbol in ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "SHIB"]:
+    elif clean_symbol in ["BTC", "ETH", "SOL", "XRP", "DOGE"]:
         exchange_symbol = f"BINANCE:{clean_symbol}USDT"
-    elif clean_symbol in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"]:
-        exchange_symbol = f"FX_IDC:{clean_symbol}"
     else:
-        # Automatically handles all global stocks, car companies, and microchips via standard equities routing
         exchange_symbol = f"NASDAQ:{clean_symbol}"
 
     try:
-        # Fetch live numbers directly via yfinance using the raw ticker symbol
         ticker_obj = yf.Ticker(clean_symbol)
         todays_data = ticker_obj.history(period="2d")
         
@@ -61,13 +57,12 @@ def get_live_market_data(symbol):
                 "exchange": exchange_symbol
             }
     except Exception as e:
-        print(f"Live dynamic fetch error for {clean_symbol}: {e}")
+        print(f"Live fetch error for {clean_symbol}: {e}")
 
-    # Fallback standard response if offline
     base_price = 150.00
     return {
         "symbol": clean_symbol,
-        "companyName": f"{clean_symbol} Global Asset",
+        "companyName": f"{clean_symbol} Market Asset",
         "currentPrice": base_price,
         "previousClose": base_price * 0.99,
         "high": base_price * 1.02,
@@ -96,7 +91,6 @@ def get_company(symbol):
 
 @app.route('/api/candles/<symbol>')
 def get_candles(symbol):
-    """Passes exact live exchange formatting directly to the frontend TradingView widget"""
     try:
         data = get_live_market_data(symbol)
         return jsonify({
