@@ -14,42 +14,42 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
 def get_fallback_stock_data(symbol):
-    """Expanded universal market data generator for stocks, crypto, forex, and commodities"""
+    """Universal market data generator with correct exchange routing for every asset type"""
     clean_symbol = symbol.strip().upper()
     
     market_data_map = {
-        # Crypto
-        "BTC": {"name": "Bitcoin USD", "price": 64500.00, "vol": 35000000000},
-        "ETH": {"name": "Ethereum USD", "price": 3450.00, "vol": 15000000000},
-        "SOL": {"name": "Solana USD", "price": 145.50, "vol": 4000000000},
-        "XRP": {"name": "Ripple USD", "price": 0.58, "vol": 1200000000},
-        "DOGE": {"name": "Dogecoin USD", "price": 0.12, "vol": 800000000},
+        # Crypto (Mapped for widget compatibility)
+        "BTC": {"name": "Bitcoin USD", "price": 64500.00, "vol": 35000000000, "exchange": "BINANCE"},
+        "ETH": {"name": "Ethereum USD", "price": 3450.00, "vol": 15000000000, "exchange": "BINANCE"},
+        "SOL": {"name": "Solana USD", "price": 145.50, "vol": 4000000000, "exchange": "BINANCE"},
+        "XRP": {"name": "Ripple USD", "price": 0.58, "vol": 1200000000, "exchange": "BINANCE"},
+        "DOGE": {"name": "Dogecoin USD", "price": 0.12, "vol": 800000000, "exchange": "BINANCE"},
         
-        # Commodities & Energy
-        "CL": {"name": "Crude Oil Futures", "price": 76.80, "vol": 120000000},
-        "OIL": {"name": "Crude Oil Spot", "price": 76.80, "vol": 120000000},
-        "GC": {"name": "Gold Futures", "price": 2420.50, "vol": 90000000},
-        "GOLD": {"name": "Gold Spot", "price": 2420.50, "vol": 90000000},
-        "SLV": {"name": "Silver Trust ETF", "price": 28.40, "vol": 45000000},
+        # Commodities & Energy (Mapped to NYMEX / COMEX / TVC)
+        "CL": {"name": "Crude Oil Futures", "price": 76.80, "vol": 120000000, "exchange": "NYMEX"},
+        "OIL": {"name": "Crude Oil Spot", "price": 76.80, "vol": 120000000, "exchange": "NYMEX"},
+        "GC": {"name": "Gold Futures", "price": 2420.50, "vol": 90000000, "exchange": "COMEX"},
+        "GOLD": {"name": "Gold Spot", "price": 2420.50, "vol": 90000000, "exchange": "COMEX"},
+        "SLV": {"name": "Silver Trust ETF", "price": 28.40, "vol": 45000000, "exchange": "NYSE"},
         
-        # Currencies / Forex
-        "EURUSD": {"name": "Euro / US Dollar", "price": 1.09, "vol": 50000000000},
-        "GBPUSD": {"name": "British Pound / US Dollar", "price": 1.28, "vol": 30000000000},
-        "USDJPY": {"name": "US Dollar / Japanese Yen", "price": 147.50, "vol": 45000000000},
+        # Currencies / Forex (Mapped to FX_IDC or OANDA)
+        "EURUSD": {"name": "Euro / US Dollar", "price": 1.09, "vol": 50000000000, "exchange": "FX_IDC"},
+        "GBPUSD": {"name": "British Pound / US Dollar", "price": 1.28, "vol": 30000000000, "exchange": "FX_IDC"},
+        "USDJPY": {"name": "US Dollar / Japanese Yen", "price": 147.50, "vol": 45000000000, "exchange": "FX_IDC"},
         
         # Indices & ETFs
-        "SPY": {"name": "SPDR S&P 500 ETF Trust", "price": 545.20, "vol": 70000000},
-        "QQQ": {"name": "Invesco QQQ Trust", "price": 468.50, "vol": 48000000},
+        "SPY": {"name": "SPDR S&P 500 ETF Trust", "price": 545.20, "vol": 70000000, "exchange": "NYSE"},
+        "QQQ": {"name": "Invesco QQQ Trust", "price": 468.50, "vol": 48000000, "exchange": "NASDAQ"},
         
         # Tech & Popular Equities
-        "AAPL": {"name": "Apple Inc.", "price": 220.50, "vol": 55000000},
-        "TSLA": {"name": "Tesla Inc.", "price": 245.80, "vol": 85000000},
-        "MSFT": {"name": "Microsoft Corporation", "price": 415.20, "vol": 40000000},
-        "NVDA": {"name": "NVIDIA Corporation", "price": 125.40, "vol": 110000000},
-        "GOOGL": {"name": "Alphabet Inc.", "price": 178.30, "vol": 30000000},
-        "AMZN": {"name": "Amazon.com Inc.", "price": 185.90, "vol": 38000000},
-        "NFLX": {"name": "Netflix Inc.", "price": 680.10, "vol": 15000000},
-        "META": {"name": "Meta Platforms Inc.", "price": 495.60, "vol": 22000000}
+        "AAPL": {"name": "Apple Inc.", "price": 220.50, "vol": 55000000, "exchange": "NASDAQ"},
+        "TSLA": {"name": "Tesla Inc.", "price": 245.80, "vol": 85000000, "exchange": "NASDAQ"},
+        "MSFT": {"name": "Microsoft Corporation", "price": 415.20, "vol": 40000000, "exchange": "NASDAQ"},
+        "NVDA": {"name": "NVIDIA Corporation", "price": 125.40, "vol": 110000000, "exchange": "NASDAQ"},
+        "GOOGL": {"name": "Alphabet Inc.", "price": 178.30, "vol": 30000000, "exchange": "NASDAQ"},
+        "AMZN": {"name": "Amazon.com Inc.", "price": 185.90, "vol": 38000000, "exchange": "NASDAQ"},
+        "NFLX": {"name": "Netflix Inc.", "price": 680.10, "vol": 15000000, "exchange": "NASDAQ"},
+        "META": {"name": "Meta Platforms Inc.", "price": 495.60, "vol": 22000000, "exchange": "NASDAQ"}
     }
     
     if clean_symbol in market_data_map:
@@ -57,10 +57,12 @@ def get_fallback_stock_data(symbol):
         price = item["price"]
         name = item["name"]
         vol = item["vol"]
+        exch = item["exchange"]
     else:
         price = 150.00
         name = f"{clean_symbol} Asset"
         vol = 1000000
+        exch = "NASDAQ"
     
     return {
         "symbol": clean_symbol,
@@ -72,6 +74,7 @@ def get_fallback_stock_data(symbol):
         "volume": vol,
         "fiftyTwoWeekHigh": price * 1.25,
         "fiftyTwoWeekLow": price * 0.75,
+        "exchange": exch
     }
 
 
@@ -92,13 +95,13 @@ def get_company(symbol):
 
 @app.route('/api/candles/<symbol>')
 def get_candles(symbol):
-    """Generates realistic historical OHLC candle data arrays for Chart.js or Lightweight Charts"""
+    """Passes exact exchange routing so the front-end chart loads correctly for every category"""
     try:
         data = get_fallback_stock_data(symbol)
         base_price = data["currentPrice"]
+        exchange = data["exchange"]
         candles = []
         
-        # Generate 30 days of simulated trend data
         import random
         current_val = base_price * 0.95
         for i in range(30):
@@ -117,7 +120,11 @@ def get_candles(symbol):
                 "close": round(close_p, 2)
             })
             
-        return jsonify({"candles": candles})
+        return jsonify({
+            "symbol": symbol.upper(),
+            "exchange": exchange,
+            "candles": candles
+        })
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({"candles": []})
@@ -125,7 +132,6 @@ def get_candles(symbol):
 
 @app.route('/api/sentiment/<symbol>')
 def get_sentiment(symbol):
-    """Market Sentiment Meter: Bullish/Bearish breakdown & Fear & Greed index"""
     return jsonify({
         "symbol": symbol.upper(),
         "bullishPercent": 72,
@@ -137,7 +143,6 @@ def get_sentiment(symbol):
 
 @app.route('/api/chat', methods=['POST'])
 def asset_chat():
-    """AI Chat Assistant per Asset: Answers specific questions about the searched asset"""
     try:
         body = request.get_json() or {}
         symbol = body.get("symbol", "Asset").upper()
@@ -165,7 +170,6 @@ def asset_chat():
 
 @app.route('/api/alert', methods=['POST'])
 def set_price_alert():
-    """Price Alert Notification setup endpoint"""
     try:
         data = request.get_json() or {}
         symbol = data.get("symbol")
