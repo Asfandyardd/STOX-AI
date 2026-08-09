@@ -9,16 +9,16 @@ import yfinance as yf
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable static file caching in dev
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
 def get_live_market_data(symbol):
-    """Dynamically links searched assets directly to match live chart feeds"""
+    """Synchronizes pricing source with TradingView exchange routing"""
     clean_symbol = symbol.strip().upper()
     
-    # Precise Exchange Routing matching TradingView charts
+    # 1. Match specific global benchmarks & crypto tickers precisely to TradingView formats
     if clean_symbol in ["GOLD", "GC"]:
         exchange_symbol = "TVC:GOLD"
     elif clean_symbol in ["OIL", "USOIL", "CL"]:
@@ -29,6 +29,7 @@ def get_live_market_data(symbol):
         exchange_symbol = f"NASDAQ:{clean_symbol}"
 
     try:
+        # Fetch data and ensure price alignment
         ticker_obj = yf.Ticker(clean_symbol)
         todays_data = ticker_obj.history(period="2d")
         
@@ -57,7 +58,7 @@ def get_live_market_data(symbol):
                 "exchange": exchange_symbol
             }
     except Exception as e:
-        print(f"Live fetch error for {clean_symbol}: {e}")
+        print(f"Fetch error for {clean_symbol}: {e}")
 
     base_price = 150.00
     return {
@@ -73,11 +74,9 @@ def get_live_market_data(symbol):
         "exchange": exchange_symbol
     }
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/api/company/<symbol>')
 def get_company(symbol):
@@ -87,7 +86,6 @@ def get_company(symbol):
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({"error": f"Failed to fetch market data: {str(e)}"}), 500
-
 
 @app.route('/api/candles/<symbol>')
 def get_candles(symbol):
@@ -102,7 +100,6 @@ def get_candles(symbol):
         print(traceback.format_exc())
         return jsonify({"candles": []})
 
-
 @app.route('/api/sentiment/<symbol>')
 def get_sentiment(symbol):
     return jsonify({
@@ -113,22 +110,18 @@ def get_sentiment(symbol):
         "sentimentLabel": "Bullish Momentum"
     })
 
-
 @app.route('/api/chat', methods=['POST'])
 def asset_chat():
     try:
         body = request.get_json() or {}
         symbol = body.get("symbol", "Asset").upper()
         question = body.get("question", "")
-
         if not question:
             return jsonify({"error": "No question provided."}), 400
-
         if not groq_client:
-            return jsonify({"answer": f"Simulated AI response: Regarding {symbol}, current trends indicate steady activity."})
+            return jsonify({"answer": f"Simulated AI response: Regarding {symbol}, trends look steady."})
 
-        prompt = f"You are an expert financial advisor assistant. Answer the user's specific question about asset '{symbol}': '{question}'. Keep the response concise and professional (under 3 sentences)."
-
+        prompt = f"You are an expert financial advisor. Answer concisely (under 3 sentences) about asset '{symbol}': '{question}'."
         chat = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile",
@@ -136,65 +129,44 @@ def asset_chat():
         )
         return jsonify({"answer": chat.choices[0].message.content})
     except Exception as e:
-        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/alert', methods=['POST'])
 def set_price_alert():
-    try:
-        data = request.get_json() or {}
-        symbol = data.get("symbol")
-        target_price = data.get("targetPrice")
-        return jsonify({"success": True, "message": f"Alert successfully set for {symbol} at ${target_price}!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
-
+    data = request.get_json() or {}
+    return jsonify({"success": True, "message": f"Alert set for {data.get('symbol')} at ${data.get('targetPrice')}!"})
 
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
         data = get_live_market_data(symbol)
         latest_close = data["currentPrice"]
-
         prompt = f"""
-You are a senior financial equity analyst. Analyze market asset symbol '{symbol.upper()}'.
-Current Live Price: ${latest_close:.2f}.
-
+Analyze asset '{symbol.upper()}' at current price ${latest_close:.2f}.
 Respond strictly with valid JSON using the exact schema:
 {{
     "recommendation": "BUY" | "SELL" | "HOLD",
-    "confidenceScore": <integer between 0 and 100>,
-    "marketSummary": "<2-sentence concise summary>",
-    "currentTrend": "<1-sentence technical trend summary>",
-    "keyStrengths": ["<strength 1>", "<strength 2>"],
-    "keyRisks": ["<risk 1>", "<risk 2>"],
+    "confidenceScore": <integer 0-100>,
+    "marketSummary": "<2 sentences>",
+    "currentTrend": "<1 sentence>",
+    "keyStrengths": ["<str1>", "<str2>"],
+    "keyRisks": ["<risk1>", "<risk2>"],
     "riskLevel": "Low" | "Medium" | "High",
     "nextMove": {{
         "predictedDirection": "BULLISH" | "BEARISH" | "SIDEWAYS",
         "targetPrice": "$<price>",
         "predictedRange": "$<low> - $<high>",
-        "reasoning": "<1-sentence explanation of next expected move>"
+        "reasoning": "<1 sentence>"
     }}
 }}
 Do not include markdown or extra commentary outside the JSON object.
 """
-
         if not groq_client:
             return jsonify({
-                "recommendation": "BUY",
-                "confidenceScore": 82,
-                "marketSummary": f"{symbol.upper()} is showing solid movement on live order books.",
-                "currentTrend": "Upward price action matching volume patterns.",
-                "keyStrengths": ["Stable volume", "Strong liquidity"],
-                "keyRisks": ["Market volatility"],
-                "riskLevel": "Medium",
-                "nextMove": {
-                    "predictedDirection": "BULLISH",
-                    "targetPrice": f"${latest_close * 1.05:.2f}",
-                    "predictedRange": f"${latest_close * 0.98:.2f} - ${latest_close * 1.07:.2f}",
-                    "reasoning": "Momentum indicators point toward continued upward traction."
-                }
+                "recommendation": "BUY", "confidenceScore": 82,
+                "marketSummary": f"{symbol.upper()} is active.", "currentTrend": "Bullish breakout.",
+                "keyStrengths": ["Volume"], "keyRisks": ["Volatility"], "riskLevel": "Medium",
+                "nextMove": {"predictedDirection": "BULLISH", "targetPrice": f"${latest_close * 1.05:.2f}", "predictedRange": f"${latest_close * 0.98:.2f} - ${latest_close * 1.07:.2f}", "reasoning": "Momentum continues."}
             })
 
         chat = groq_client.chat.completions.create(
@@ -203,25 +175,16 @@ Do not include markdown or extra commentary outside the JSON object.
             temperature=0.2,
             response_format={"type": "json_object"}
         )
-
-        analysis = json.loads(chat.choices[0].message.content)
-        return jsonify(analysis)
-
+        return jsonify(json.loads(chat.choices[0].message.content))
     except Exception as e:
-        print(traceback.format_exc())
-        return jsonify({"error": f"AI Analysis failed: {str(e)}"}), 500
-
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/news/<symbol>')
 def get_news(symbol):
     return jsonify({
         "overallSentiment": "Bullish",
-        "articles": [
-            {"title": f"Live tracking: {symbol.upper()} reports active volume flow across global sessions.", "link": "https://finance.yahoo.com", "publisher": "Global Market Wire"},
-            {"title": "Macroeconomic updates influence current asset valuations.", "link": "https://finance.yahoo.com", "publisher": "Financial Times"}
-        ]
+        "articles": [{"title": f"{symbol.upper()} active sessions.", "link": "https://finance.yahoo.com", "publisher": "Market Wire"}]
     })
-
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
