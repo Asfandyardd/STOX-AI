@@ -30,9 +30,9 @@ ASSET_REGISTRY = {
     "AMZN": {"yf": "AMZN", "tv": "NASDAQ:AMZN", "name": "Amazon.com Inc."},
     "GOOGL": {"yf": "GOOGL", "tv": "NASDAQ:GOOGL", "name": "Alphabet Inc."},
     "META": {"yf": "META", "tv": "NASDAQ:META", "name": "Meta Platforms Inc."},
-    "NFLX": {"yf": "NFLX", "tv": "NASDAQ:NFLX", "name": "Netflix Inc."}
+    "NFLX": {"yf": "NFLX", "tv": "NASDAQ:NFLX", "name": "Netflix Inc."},
+    "AMD": {"yf": "AMD", "tv": "NASDAQ:AMD", "name": "Advanced Micro Devices Inc."}
 }
-
 def get_chart_synced_data(symbol):
     clean_symbol = symbol.strip().upper()
     
