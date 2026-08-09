@@ -62,23 +62,32 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTradingViewWidgets(symbol, exchange) {
         let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
-        // 1. Render TradingView Single Ticker Widget on the upper right to match chart prices precisely
+        // 1. Render TradingView Single Quote Widget on the upper right
         const tickerContainer = document.getElementById('tradingview-ticker-container');
         if (tickerContainer) {
-            tickerContainer.innerHTML = `
-                <div class="tradingview-widget-container" style="width: 100%; height: 100%;">
-                  <div class="tradingview-widget-container__widget" style="width:100%; height:100%;"></div>
-                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-                  {
-                    "symbol": "${fullTicker}",
-                    "width": "100%",
-                    "colorTheme": "dark",
-                    "isTransparent": true,
-                    "locale": "en"
-                  }
-                  </script>
-                </div>
-            `;
+            tickerContainer.innerHTML = ''; // clear previous widget
+            const widgetDiv = document.createElement('div');
+            widgetDiv.className = "tradingview-widget-container";
+            widgetDiv.style.width = "100%";
+            widgetDiv.style.height = "100%";
+
+            const innerWidget = document.createElement('div');
+            innerWidget.className = "tradingview-widget-container__widget";
+            widgetDiv.appendChild(innerWidget);
+
+            const script = document.createElement('script');
+            script.type = "text/javascript";
+            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js";
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+                "symbol": fullTicker,
+                "width": "100%",
+                "colorTheme": "dark",
+                "isTransparent": true,
+                "locale": "en"
+            });
+            widgetDiv.appendChild(script);
+            tickerContainer.appendChild(widgetDiv);
         }
 
         // 2. Render Main Candlestick Chart Widget
