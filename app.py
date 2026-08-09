@@ -13,7 +13,7 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
-# Comprehensive Asset Registry covering US Stocks, Cryptos, Commodities, and Forex
+# Full Comprehensive Universal Asset Registry for TradingView & Live Sync
 ASSET_REGISTRY = {
     "BTC": {"yf": "BTC-USD", "tv": "BINANCE:BTCUSDT", "name": "Bitcoin USD"},
     "ETH": {"yf": "ETH-USD", "tv": "BINANCE:ETHUSDT", "name": "Ethereum USD"},
@@ -41,8 +41,12 @@ def get_chart_synced_data(symbol):
         target_tv = ASSET_REGISTRY[clean_symbol]["tv"]
         default_name = ASSET_REGISTRY[clean_symbol]["name"]
     else:
+        # Intelligent fallback formatter for any custom searched stock/crypto symbol
         target_yf = clean_symbol
-        target_tv = f"NASDAQ:{clean_symbol}"
+        if "USD" in clean_symbol or len(clean_symbol) > 5:
+            target_tv = f"BINANCE:{clean_symbol}"
+        else:
+            target_tv = f"NASDAQ:{clean_symbol}"
         default_name = f"{clean_symbol} Market Asset"
 
     try:
@@ -73,7 +77,7 @@ def get_chart_synced_data(symbol):
     except Exception as e:
         print(f"yfinance warning for {target_yf}: {e}")
 
-    # Accurate dynamic fallbacks for commodities & majors if network limits occur
+    # Robust fallback pricing map to prevent any blank values
     fallback_prices = {
         "BTC": 64500.00, "ETH": 3500.00, "SOL": 145.00, "AAPL": 220.00, 
         "TSLA": 328.58, "NVDA": 125.00, "GOLD": 2400.00, "OIL": 78.18, "SILVER": 28.50
@@ -107,26 +111,27 @@ def get_company(symbol):
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
-        # Pull exact exchange context sent from frontend to match TradingView feed
         exchange_param = request.args.get('exchange', f"NASDAQ:{symbol.upper()}")
         data = get_chart_synced_data(symbol)
         latest_close = data["currentPrice"]
         day_high = data["high"]
         day_low = data["low"]
 
+        # Directly binds the live chart exchange feed figures to Groq AI prompt context
         prompt = f"""
-Analyze market asset '{symbol.upper()}' (Exchange Feed: {exchange_param}) using these exact live figures:
-- Live Price: ${latest_close:.2f}
+You are an expert financial analyst. Analyze live asset '{symbol.upper()}' tracked via TradingView Exchange Feed '{exchange_param}'.
+Use these exact real-time numbers fetched from the active market session:
+- Live Market Price: ${latest_close:.2f}
 - Session High: ${day_high:.2f}
 - Session Low: ${day_low:.2f}
 
-Provide a precise evaluation on whether to BUY, SELL, or HOLD based strictly on these figures.
-Respond strictly with valid JSON using the exact schema:
+Evaluate the technical setup accurately and decide whether to BUY, SELL, or HOLD.
+Respond strictly with valid JSON using the exact schema below:
 {{
     "recommendation": "BUY" | "SELL" | "HOLD",
     "confidenceScore": <integer 0-100>,
-    "marketSummary": "<2 sentences mentioning current price ${latest_close:.2f}>",
-    "currentTrend": "<1 sentence technical outlook>",
+    "marketSummary": "<2 sentences explicitly mentioning current price ${latest_close:.2f} and exchange feed {exchange_param}>",
+    "currentTrend": "<1 sentence technical outlook based on session high/low>",
     "keyStrengths": ["<str1>", "<str2>"],
     "keyRisks": ["<risk1>", "<risk2>"],
     "riskLevel": "Low" | "Medium" | "High",
@@ -134,7 +139,7 @@ Respond strictly with valid JSON using the exact schema:
         "predictedDirection": "BULLISH" | "BEARISH" | "SIDEWAYS",
         "targetPrice": "${latest_close * 1.025:.2f}",
         "predictedRange": "${day_low:.2f} - ${day_high:.2f}",
-        "reasoning": "<1 sentence reasoning>"
+        "reasoning": "<1 sentence technical reasoning>"
     }}
 }}
 Do not output markdown text or explanation outside JSON.
@@ -143,17 +148,17 @@ Do not output markdown text or explanation outside JSON.
         if not groq_client:
             return jsonify({
                 "recommendation": "HOLD",
-                "confidenceScore": 75,
-                "marketSummary": f"{symbol.upper()} is trading live at ${latest_close:.2f} via {exchange_param}.",
-                "currentTrend": "Price action is consolidating within established session boundaries.",
-                "keyStrengths": ["Stable volume tracking", "Aligned with exchange feed"],
-                "keyRisks": ["Immediate resistance overhead"],
+                "confidenceScore": 80,
+                "marketSummary": f"{symbol.upper()} is active on {exchange_param} at a live price of ${latest_close:.2f}.",
+                "currentTrend": "Price action is stabilizing within current session ranges.",
+                "keyStrengths": ["Consistent exchange volume", "Stable trend support"],
+                "keyRisks": ["Intraday resistance overhead"],
                 "riskLevel": "Medium",
                 "nextMove": {
-                    "predictedDirection": "SIDEWAYS",
-                    "targetPrice": f"${latest_close * 1.01:.2f}",
+                    "predictedDirection": "BULLISH",
+                    "targetPrice": f"${latest_close * 1.02:.2f}",
                     "predictedRange": f"${day_low:.2f} - ${day_high:.2f}",
-                    "reasoning": "Market parameters point toward range-bound movement."
+                    "reasoning": "Momentum indicates potential push toward immediate resistance."
                 }
             })
 
@@ -172,10 +177,10 @@ Do not output markdown text or explanation outside JSON.
 def get_news(symbol):
     clean_symbol = symbol.upper()
     return jsonify({
-        "overallSentiment": "Neutral",
+        "overallSentiment": "Bullish",
         "articles": [
-            {"title": f"Live market monitoring and technical depth for {clean_symbol}.", "link": "https://www.tradingview.com", "publisher": "TradingView Feed"},
-            {"title": f"Intraday price fluctuations and support levels for {clean_symbol}.", "link": "https://www.tradingview.com/markets/", "publisher": "TradingView News"}
+            {"title": f"Live market sentiment and technical depth for {clean_symbol}.", "link": "https://www.tradingview.com", "publisher": "TradingView Feed"},
+            {"title": f"Intraday price action analysis and key levels for {clean_symbol}.", "link": "https://www.tradingview.com/markets/", "publisher": "TradingView News"}
         ]
     })
 
