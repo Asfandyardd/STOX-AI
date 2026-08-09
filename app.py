@@ -13,7 +13,6 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
-# Complete Asset Registry mapping search keys to exact Yahoo tickers and TradingView feeds
 ASSET_REGISTRY = {
     "BTC": {"yf": "BTC-USD", "tv": "BINANCE:BTCUSDT", "name": "Bitcoin USD"},
     "ETH": {"yf": "ETH-USD", "tv": "BINANCE:ETHUSDT", "name": "Ethereum USD"},
@@ -36,7 +35,6 @@ ASSET_REGISTRY = {
 
 def get_chart_synced_data(symbol):
     clean_symbol = symbol.strip().upper()
-    
     if clean_symbol in ASSET_REGISTRY:
         target_yf = ASSET_REGISTRY[clean_symbol]["yf"]
         target_tv = ASSET_REGISTRY[clean_symbol]["tv"]
@@ -57,7 +55,6 @@ def get_chart_synced_data(symbol):
     try:
         ticker_obj = yf.Ticker(target_yf)
         todays_data = ticker_obj.history(period="5d", interval="1d")
-            
         if todays_data.empty and "-" not in target_yf:
             ticker_obj = yf.Ticker(f"{target_yf}-USD")
             todays_data = ticker_obj.history(period="5d", interval="1d")
@@ -84,16 +81,13 @@ def get_chart_synced_data(symbol):
                 "exchange": target_tv
             }
     except Exception as e:
-        print(f"yfinance resolution error for {target_yf}: {e}")
+        print(f"yfinance error: {e}")
 
     fallback_prices = {
-        "BTC": 64500.00, "ETH": 3500.00, "SOL": 145.00, "XRP": 0.55, 
-        "DOGE": 0.12, "AAPL": 220.00, "TSLA": 328.58, "NVDA": 125.00, 
-        "MSFT": 420.00, "AMZN": 180.00, "GOOGL": 175.00, "META": 480.00,
-        "GOLD": 2400.00, "OIL": 78.18, "SILVER": 28.50, "AMD": 150.00
+        "BTC": 64500.00, "ETH": 3500.00, "SOL": 145.00, "AAPL": 220.00, 
+        "TSLA": 328.58, "NVDA": 125.00, "GOLD": 2400.00, "OIL": 78.18
     }
     p = fallback_prices.get(clean_symbol, 150.00)
-
     return {
         "symbol": clean_symbol,
         "companyName": default_name,
@@ -104,11 +98,9 @@ def get_chart_synced_data(symbol):
         "exchange": target_tv
     }
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/api/company/<symbol>')
 def get_company(symbol):
@@ -117,19 +109,17 @@ def get_company(symbol):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
         data = get_chart_synced_data(symbol)
-        
-        # Check if the frontend passed the live frontend chart price override
         live_price_override = request.args.get('live_price')
+        
         if live_price_override:
             try:
                 latest_close = float(live_price_override)
-                day_high = latest_close * 1.015
-                day_low = latest_close * 0.985
+                day_high = max(data["high"], latest_close * 1.01)
+                day_low = min(data["low"], latest_close * 0.99)
             except:
                 latest_close = data["currentPrice"]
                 day_high = data["high"]
@@ -143,8 +133,8 @@ def analyze_stock(symbol):
         exchange_param = data["exchange"]
 
         prompt = f"""
-You are an expert financial analyst. Analyze market asset '{asset_name} ({symbol.upper()})' actively tracked via TradingView Real-Time Feed '{exchange_param}'.
-CRITICAL: You MUST base your analysis strictly and exclusively on these current real-time figures fetched from the active market session:
+You are an expert financial analyst. Analyze market asset '{asset_name} ({symbol.upper()})' actively tracked via feed '{exchange_param}'.
+CRITICAL: You MUST base your analysis strictly and exclusively on these current real-time figures:
 - Live Market Price: ${latest_close:.2f}
 - Session High: ${day_high:.2f}
 - Session Low: ${day_low:.2f}
@@ -154,7 +144,7 @@ Respond strictly with valid JSON using the exact schema below:
 {{
     "recommendation": "BUY" | "SELL" | "HOLD",
     "confidenceScore": <integer 0-100>,
-    "marketSummary": "<2 sentences explicitly mentioning current price ${latest_close:.2f} for {symbol.upper()} via TradingView Real-Time Feed '{exchange_param}'>",
+    "marketSummary": "<2 sentences explicitly mentioning current price ${latest_close:.2f} for {symbol.upper()} via Real-Time Feed '{exchange_param}'>",
     "currentTrend": "<1 sentence technical outlook based on session high/low>",
     "keyStrengths": ["<str1>", "<str2>"],
     "keyRisks": ["<risk1>", "<risk2>"],
@@ -173,7 +163,7 @@ Do not output markdown text or explanation outside JSON.
             return jsonify({
                 "recommendation": "HOLD",
                 "confidenceScore": 80,
-                "marketSummary": f"{asset_name} ({symbol.upper()}) is active on TradingView Real-Time Feed '{exchange_param}' at a live price of ${latest_close:.2f}.",
+                "marketSummary": f"{asset_name} ({symbol.upper()}) is active at a live price of ${latest_close:.2f}.",
                 "currentTrend": "Price action is stabilizing within current session ranges.",
                 "keyStrengths": ["Consistent exchange volume", "Stable trend support"],
                 "keyRisks": ["Intraday resistance overhead"],
@@ -196,7 +186,6 @@ Do not output markdown text or explanation outside JSON.
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/news/<symbol>')
 def get_news(symbol):
     clean_symbol = symbol.upper()
@@ -207,7 +196,6 @@ def get_news(symbol):
             {"title": f"Intraday price action analysis and key levels for {clean_symbol}.", "link": "https://www.tradingview.com/markets/", "publisher": "TradingView News"}
         ]
     })
-
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
