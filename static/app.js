@@ -62,32 +62,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTradingViewWidgets(symbol, exchange) {
         let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
-        // 1. Render TradingView Single Quote Widget on the upper right
+        // 1. Render Upper Price Widget via TradingView frame
         const tickerContainer = document.getElementById('tradingview-ticker-container');
         if (tickerContainer) {
-            tickerContainer.innerHTML = ''; // clear previous widget
-            const widgetDiv = document.createElement('div');
-            widgetDiv.className = "tradingview-widget-container";
-            widgetDiv.style.width = "100%";
-            widgetDiv.style.height = "100%";
-
-            const innerWidget = document.createElement('div');
-            innerWidget.className = "tradingview-widget-container__widget";
-            widgetDiv.appendChild(innerWidget);
-
-            const script = document.createElement('script');
-            script.type = "text/javascript";
-            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js";
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-                "symbol": fullTicker,
-                "width": "100%",
-                "colorTheme": "dark",
-                "isTransparent": true,
-                "locale": "en"
-            });
-            widgetDiv.appendChild(script);
-            tickerContainer.appendChild(widgetDiv);
+            tickerContainer.innerHTML = `
+                <iframe 
+                    src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=2&symboledit=0&saveimage=0&toolbarbg=f1f3f6&studies=[]&theme=dark&style=3&timezone=Etc%2FUTC" 
+                    style="width: 100%; height: 85px; border: none; background: transparent;" 
+                    allowtransparency="true" 
+                    scrolling="no">
+                </iframe>
+            `;
         }
 
         // 2. Render Main Candlestick Chart Widget
