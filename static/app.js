@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
+
     const loadingSection = document.getElementById('loadingSection');
     const dashboard = document.getElementById('dashboard');
     const messageBox = document.getElementById('messageBox');
 
-    // Auto-load BTC on initial page load so AI analysis is instantly present
-    runDashboard('BTC');
+    let livePulseInterval = null;
 
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const res = await fetch(url);
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            throw new Error(`Invalid server response from ${url}`);
+            throw new Error(`Invalid non-JSON response from ${url}`);
         }
         return res.json();
     }
@@ -28,6 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function runDashboard(symbol) {
         hideElement(messageBox);
         showElement(loadingSection);
+        hideElement(dashboard);
+
+        if (livePulseInterval) clearInterval(livePulseInterval);
 
         try {
             const [companyRes, aiRes, newsRes] = await Promise.all([
@@ -38,137 +41,85 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (companyRes.error) throw new Error(companyRes.error);
 
-            renderHeaderMeta(companyRes);
-            renderTradingViewWidgets(companyRes.symbol, companyRes.exchange);
+            renderCompanyData(companyRes);
+            renderTradingViewWidget(companyRes.symbol, companyRes.exchange);
             renderAIData(aiRes);
             renderNewsData(newsRes);
 
             hideElement(loadingSection);
             showElement(dashboard);
 
+            // Simulate real-time ticker pulsing effect
+            startLiveTickSim(companyRes.currentPrice);
+
         } catch (err) {
             hideElement(loadingSection);
-            showMessage(`Error loading data: ${err.message}`, 'error');
+            showMessage(`Error: ${err.message}`, 'error');
         }
     }
 
-    function renderHeaderMeta(data) {
-        const symbolEl = document.getElementById('stockSymbol');
-        if (symbolEl) {
-            symbolEl.textContent = `${data.companyName} (${data.symbol})`;
-        }
+    function renderCompanyData(data) {
+        document.getElementById('stockSymbol').textContent = `${data.companyName} (${data.symbol})`;
+        document.getElementById('currentPrice').textContent = `$${Number(data.currentPrice || 0).toFixed(2)}`;
+
+        const diff = data.currentPrice - data.previousClose;
+        const pct = data.previousClose ? ((diff / data.previousClose) * 100).toFixed(2) : '0.00';
+        const sign = diff >= 0 ? '+' : '';
+
+        const priceChangeEl = document.getElementById('priceChange');
+        priceChangeEl.textContent = `${sign}$${diff.toFixed(2)} (${sign}${pct}%)`;
+        priceChangeEl.className = `price-change ${diff >= 0 ? 'up' : 'down'}`;
+
+        document.getElementById('previousClose').textContent = `$${Number(data.previousClose || 0).toFixed(2)}`;
+        document.getElementById('dayRange').textContent = `$${Number(data.low || 0).toFixed(2)} - $${Number(data.high || 0).toFixed(2)}`;
+        document.getElementById('volume').textContent = Number(data.volume || 0).toLocaleString();
+        document.getElementById('range52').textContent = `$${Number(data.fiftyTwoWeekLow || 0).toFixed(2)} - $${Number(data.fiftyTwoWeekHigh || 0).toFixed(2)}`;
     }
 
-    function renderTradingViewWidgets(symbol, exchange) {
+    function renderTradingViewWidget(symbol, exchange) {
+        const container = document.getElementById('tradingview-container');
+        if (!container) return;
+
         let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
-        // 1. Ticker Widget
-        const tickerContainer = document.getElementById('tradingview-ticker-container');
-        if (tickerContainer) {
-            tickerContainer.innerHTML = `
-                <iframe 
-                    src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=2&symboledit=0&saveimage=0&toolbarbg=f1f3f6&studies=[]&theme=dark&style=3&timezone=Etc%2FUTC" 
-                    style="width: 100%; height: 85px; border: none; background: transparent;" 
-                    allowtransparency="true" 
-                    scrolling="no">
-                </iframe>
-            `;
-        }
-
-        // 2. Candlestick Chart Widget
-        const chartContainer = document.getElementById('tradingview-container');
-        if (chartContainer) {
-            chartContainer.innerHTML = `
-                <iframe 
-                    src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
-                    style="width: 100%; height: 100%; border: none;" 
-                    allowtransparency="true" 
-                    scrolling="no">
-                </iframe>
-            `;
-        }
-
-        // 3. Financials & Fundamentals Widget
-        const fundContainer = document.getElementById('tradingview-fundamentals-container');
-        if (fundContainer) {
-            fundContainer.innerHTML = '';
-            const widgetDiv = document.createElement('div');
-            widgetDiv.className = "tradingview-widget-container";
-            widgetDiv.style.width = "100%";
-            widgetDiv.style.height = "100%";
-
-            const innerWidget = document.createElement('div');
-            innerWidget.className = "tradingview-widget-container__widget";
-            widgetDiv.appendChild(innerWidget);
-
-            const script = document.createElement('script');
-            script.type = "text/javascript";
-            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-                "symbol": fullTicker,
-                "colorTheme": "dark",
-                "isTransparent": false,
-                "largeChartUrl": "",
-                "displayMode": "regular",
-                "width": "100%",
-                "height": "460",
-                "locale": "en"
-            });
-            widgetDiv.appendChild(script);
-            fundContainer.appendChild(widgetDiv);
-        }
+        container.innerHTML = `
+            <iframe 
+                src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
+                style="width: 100%; height: 100%; border: none;" 
+                allowtransparency="true" 
+                scrolling="no">
+            </iframe>
+        `;
     }
 
     function renderAIData(ai) {
-        if (!ai || ai.error) return;
+        if (ai.error) return;
 
         const aiSentimentEl = document.getElementById('aiSentiment');
-        if (aiSentimentEl) {
-            aiSentimentEl.textContent = ai.recommendation || "HOLD";
-            aiSentimentEl.className = `sentiment-badge ${(ai.recommendation || 'hold').toLowerCase()}`;
-        }
+        aiSentimentEl.textContent = ai.recommendation || "HOLD";
+        aiSentimentEl.className = `sentiment-badge ${(ai.recommendation || 'hold').toLowerCase()}`;
 
-        const confidenceEl = document.getElementById('aiConfidence');
-        if (confidenceEl) confidenceEl.textContent = `${ai.confidenceScore || 0}%`;
-
-        const summaryEl = document.getElementById('aiSummary');
-        if (summaryEl) summaryEl.textContent = ai.marketSummary || 'N/A';
-
-        const outlookEl = document.getElementById('aiOutlook');
-        if (outlookEl) outlookEl.textContent = ai.currentTrend || 'N/A';
+        document.getElementById('aiConfidence').textContent = `${ai.confidenceScore || 0}%`;
+        document.getElementById('aiSummary').textContent = ai.marketSummary || 'N/A';
+        document.getElementById('aiOutlook').textContent = ai.currentTrend || 'N/A';
+        document.getElementById('riskLevel').textContent = ai.riskLevel || 'Medium';
 
         if (ai.nextMove) {
             const dirBadge = document.getElementById('predictedDirectionBadge');
-            if (dirBadge) {
-                dirBadge.textContent = ai.nextMove.predictedDirection || 'NEUTRAL';
-                dirBadge.className = `sentiment-badge ${(ai.nextMove.predictedDirection || 'neutral').toLowerCase()}`;
-            }
+            dirBadge.textContent = ai.nextMove.predictedDirection || 'NEUTRAL';
+            dirBadge.className = `sentiment-badge ${(ai.nextMove.predictedDirection || 'neutral').toLowerCase()}`;
 
-            const targetPriceEl = document.getElementById('targetPrice');
-            if (targetPriceEl) targetPriceEl.textContent = ai.nextMove.targetPrice || '—';
-
-            const predictedRangeEl = document.getElementById('predictedRange');
-            if (predictedRangeEl) predictedRangeEl.textContent = ai.nextMove.predictedRange || '—';
-
-            const reasoningEl = document.getElementById('nextMoveReasoning');
-            if (reasoningEl) reasoningEl.textContent = ai.nextMove.reasoning || '';
+            document.getElementById('targetPrice').textContent = ai.nextMove.targetPrice || '—';
+            document.getElementById('predictedRange').textContent = ai.nextMove.predictedRange || '—';
+            document.getElementById('nextMoveReasoning').textContent = ai.nextMove.reasoning || '';
         }
 
-        const posEl = document.getElementById('positiveFactors');
-        if (posEl) {
-            posEl.innerHTML = (ai.keyStrengths || []).map(s => `<li>${s}</li>`).join('');
-        }
-
-        const riskFactorsEl = document.getElementById('riskFactors');
-        if (riskFactorsEl) {
-            riskFactorsEl.innerHTML = (ai.keyRisks || []).map(r => `<li>${r}</li>`).join('');
-        }
+        document.getElementById('positiveFactors').innerHTML = (ai.keyStrengths || []).map(s => `<li>${s}</li>`).join('');
+        document.getElementById('riskFactors').innerHTML = (ai.keyRisks || []).map(r => `<li>${r}</li>`).join('');
     }
 
     function renderNewsData(news) {
         const newsListEl = document.getElementById('newsList');
-        if (!newsListEl) return;
         if (!news.articles || news.articles.length === 0) {
             newsListEl.innerHTML = '<p class="yf-muted">No news updates available.</p>';
             return;
@@ -180,6 +131,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="yf-muted" style="font-size:0.78rem; margin-top:0.2rem;">Source: ${art.publisher}</p>
             </div>
         `).join('');
+    }
+
+    function startLiveTickSim(basePrice) {
+        let current = basePrice;
+        livePulseInterval = setInterval(() => {
+            const delta = (Math.random() - 0.49) * (basePrice * 0.001);
+            current += delta;
+            
+            const priceEl = document.getElementById('currentPrice');
+            const pulseEl = document.getElementById('livePulse');
+
+            if (priceEl) {
+                priceEl.textContent = `$${current.toFixed(2)}`;
+                if (pulseEl) {
+                    pulseEl.style.backgroundColor = delta >= 0 ? 'var(--yf-green)' : 'var(--yf-red)';
+                }
+            }
+        }, 3000);
     }
 
     function showElement(el) { if (el) el.classList.remove('hidden'); }
