@@ -37,15 +37,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (companyRes.error) throw new Error(companyRes.error);
 
-            // 1. Resolve exact TradingView exchange syntax ticker string
+            // Resolve exact TradingView exchange syntax ticker string
             let fullTicker = companyRes.exchange && companyRes.exchange.includes(':') 
                 ? companyRes.exchange 
                 : `NASDAQ:${companyRes.symbol}`;
 
-            // 2. Render TradingView Native Widgets (Chart + Symbol Info Header)
+            // Render fundamental stats data table
+            renderCompanyStats(companyRes);
+
+            // Render TradingView Widgets (Header Info + Candlestick Chart) to match 100%
             renderTradingViewWidgets(fullTicker);
 
-            // 3. Render AI Recommendations & News Data normally
+            // Render AI & News data
             renderAIData(aiRes);
             renderNewsData(newsRes);
 
@@ -58,25 +61,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderTradingViewWidgets(fullTicker) {
-        // --- A. Render Upper Price & Symbol Info Widget (Matches chart data 100%) ---
-        const topInfoContainer = document.getElementById('topSymbolInfoContainer') || createTopInfoContainer();
-        topInfoContainer.innerHTML = `
-            <div class="tradingview-widget-container" style="width: 100%; height: 110px;">
-              <div class="tradingview-widget-container__widget" style="height:100%;width:100%;"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
-              {
-                "symbol": "${fullTicker}",
-                "width": "100%",
-                "locale": "en",
-                "colorTheme": "dark",
-                "isTransparent": true
-              }
-              </script>
-            </div>
-        `;
+    function renderCompanyStats(data) {
+        document.getElementById('previousClose').textContent = `$${Number(data.previousClose || 0).toFixed(2)}`;
+        document.getElementById('dayRange').textContent = `$${Number(data.low || 0).toFixed(2)} - $${Number(data.high || 0).toFixed(2)}`;
+        document.getElementById('volume').textContent = Number(data.volume || 0).toLocaleString();
+        document.getElementById('range52').textContent = `$${Number(data.fiftyTwoWeekLow || 0).toFixed(2)} - $${Number(data.fiftyTwoWeekHigh || 0).toFixed(2)}`;
+    }
 
-        // --- B. Render Main Candlestick Chart Widget ---
+    function renderTradingViewWidgets(fullTicker) {
+        // --- 1. Render Upper Symbol Info Widget (Matches Chart Prices 100%) ---
+        const topInfoContainer = document.getElementById('topSymbolInfoContainer');
+        if (topInfoContainer) {
+            topInfoContainer.innerHTML = `
+                <div class="tradingview-widget-container" style="width: 100%;">
+                  <div class="tradingview-widget-container__widget" style="width:100%;"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+                  {
+                    "symbol": "${fullTicker}",
+                    "width": "100%",
+                    "locale": "en",
+                    "colorTheme": "dark",
+                    "isTransparent": true
+                  }
+                  </script>
+                </div>
+            `;
+        }
+
+        // --- 2. Render Main Candlestick Chart Widget ---
         const chartContainer = document.getElementById('tradingview-container');
         if (chartContainer) {
             chartContainer.innerHTML = `
@@ -88,16 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </iframe>
             `;
         }
-    }
-
-    function createTopInfoContainer() {
-        // Fallback helper if the DOM container container needs to be injected dynamically above the chart
-        const container = document.createElement('div');
-        container.id = 'topSymbolInfoContainer';
-        container.style.marginBottom = '20px';
-        const dashboardEl = document.getElementById('dashboard');
-        if (dashboardEl) dashboardEl.prepend(container);
-        return container;
     }
 
     function renderAIData(ai) {
