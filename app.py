@@ -13,7 +13,7 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
-# Universal Registry mapping custom searches to exact TradingView widgets and Yahoo Finance tickers
+# Complete Asset Registry mapping search keys to exact Yahoo tickers and TradingView feeds
 ASSET_REGISTRY = {
     "BTC": {"yf": "BTC-USD", "tv": "BINANCE:BTCUSDT", "name": "Bitcoin USD"},
     "ETH": {"yf": "ETH-USD", "tv": "BINANCE:ETHUSDT", "name": "Ethereum USD"},
@@ -41,23 +41,25 @@ def get_chart_synced_data(symbol):
         target_tv = ASSET_REGISTRY[clean_symbol]["tv"]
         default_name = ASSET_REGISTRY[clean_symbol]["name"]
     else:
-        # Dynamic handling for any custom stock symbol searched by the user
         target_yf = clean_symbol
         if "USD" in clean_symbol or clean_symbol in ["BTC", "ETH", "SOL", "XRP", "DOGE"]:
             target_tv = f"BINANCE:{clean_symbol}USDT"
             target_yf = f"{clean_symbol}-USD"
+        elif clean_symbol in ["GOLD", "SILVER"]:
+            target_tv = f"TVC:{clean_symbol}"
+        elif clean_symbol in ["OIL", "CL"]:
+            target_tv = "NYMEX:CL1!"
         else:
             target_tv = f"NASDAQ:{clean_symbol}"
         default_name = f"{clean_symbol} Market Asset"
 
     try:
         ticker_obj = yf.Ticker(target_yf)
-        todays_data = ticker_obj.history(period="7d")
+        todays_data = ticker_obj.history(period="5d", interval="1d")
             
-        if todays_data.empty and "-USD" in target_yf:
-            alt_yf = target_yf.replace("-USD", "-USDT")
-            ticker_obj = yf.Ticker(alt_yf)
-            todays_data = ticker_obj.history(period="7d")
+        if todays_data.empty and "-" not in target_yf:
+            ticker_obj = yf.Ticker(f"{target_yf}-USD")
+            todays_data = ticker_obj.history(period="5d", interval="1d")
 
         if not todays_data.empty:
             current_price = float(todays_data['Close'].iloc[-1])
@@ -81,13 +83,14 @@ def get_chart_synced_data(symbol):
                 "exchange": target_tv
             }
     except Exception as e:
-        print(f"yfinance warning for {target_yf}: {e}")
+        print(f"yfinance resolution error for {target_yf}: {e}")
 
-    # Fallback price maps for robust fallback support
+    # Fallback price maps so response never breaks if API limit hits
     fallback_prices = {
-        "BTC": 64500.00, "ETH": 3500.00, "SOL": 145.00, "AAPL": 220.00, 
-        "TSLA": 328.58, "NVDA": 125.00, "GOLD": 2400.00, "OIL": 78.18, "SILVER": 28.50,
-        "MSFT": 420.00, "AMZN": 180.00, "GOOGL": 175.00, "META": 480.00
+        "BTC": 64500.00, "ETH": 3500.00, "SOL": 145.00, "XRP": 0.55, 
+        "DOGE": 0.12, "AAPL": 220.00, "TSLA": 328.58, "NVDA": 125.00, 
+        "MSFT": 420.00, "AMZN": 180.00, "GOOGL": 175.00, "META": 480.00,
+        "GOLD": 2400.00, "OIL": 78.18, "SILVER": 28.50
     }
     p = fallback_prices.get(clean_symbol, 150.00)
 
@@ -118,29 +121,28 @@ def get_company(symbol):
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
-        # Dynamically pull the exact exchange symbol sent by the frontend widget call
-        exchange_param = request.args.get('exchange', f"NASDAQ:{symbol.upper()}")
         data = get_chart_synced_data(symbol)
         
         latest_close = data["currentPrice"]
         day_high = data["high"]
         day_low = data["low"]
         asset_name = data["companyName"]
+        exchange_param = data["exchange"]
 
-        # Forces Groq AI to tightly bind its analysis to the searched asset and exchange feed
+        # Forces Groq AI to strictly base analysis on the exact live resolved feed data
         prompt = f"""
-You are an expert financial analyst. Analyze market asset '{asset_name} ({symbol.upper()})' actively tracked via TradingView Exchange Feed '{exchange_param}'.
-Use these exact real-time numbers fetched from the live market session:
+You are an expert financial analyst. Analyze market asset '{asset_name} ({symbol.upper()})' actively tracked via TradingView Real-Time Feed '{exchange_param}'.
+CRITICAL: You MUST base your analysis strictly and exclusively on these current real-time figures fetched from the active market session:
 - Live Market Price: ${latest_close:.2f}
 - Session High: ${day_high:.2f}
 - Session Low: ${day_low:.2f}
 
-Evaluate the technical setup accurately and decide whether to BUY, SELL, or HOLD based strictly on these figures.
+Evaluate the technical setup accurately and decide whether to BUY, SELL, or HOLD based strictly on these live numbers.
 Respond strictly with valid JSON using the exact schema below:
 {{
     "recommendation": "BUY" | "SELL" | "HOLD",
     "confidenceScore": <integer 0-100>,
-    "marketSummary": "<2 sentences explicitly mentioning current price ${latest_close:.2f} for {symbol.upper()} via TradingView Exchange Feed '{exchange_param}'>",
+    "marketSummary": "<2 sentences explicitly mentioning current price ${latest_close:.2f} for {symbol.upper()} via TradingView Real-Time Feed '{exchange_param}'>",
     "currentTrend": "<1 sentence technical outlook based on session high/low>",
     "keyStrengths": ["<str1>", "<str2>"],
     "keyRisks": ["<risk1>", "<risk2>"],
@@ -149,7 +151,7 @@ Respond strictly with valid JSON using the exact schema below:
         "predictedDirection": "BULLISH" | "BEARISH" | "SIDEWAYS",
         "targetPrice": "${latest_close * 1.025:.2f}",
         "predictedRange": "${day_low:.2f} - ${day_high:.2f}",
-        "reasoning": "<1 sentence technical reasoning>"
+        "reasoning": "<1 sentence technical reasoning based on price levels>"
     }}
 }}
 Do not output markdown text or explanation outside JSON.
@@ -159,7 +161,7 @@ Do not output markdown text or explanation outside JSON.
             return jsonify({
                 "recommendation": "HOLD",
                 "confidenceScore": 80,
-                "marketSummary": f"{asset_name} ({symbol.upper()}) is active on TradingView Exchange Feed '{exchange_param}' at a live price of ${latest_close:.2f}.",
+                "marketSummary": f"{asset_name} ({symbol.upper()}) is active on TradingView Real-Time Feed '{exchange_param}' at a live price of ${latest_close:.2f}.",
                 "currentTrend": "Price action is stabilizing within current session ranges.",
                 "keyStrengths": ["Consistent exchange volume", "Stable trend support"],
                 "keyRisks": ["Intraday resistance overhead"],
@@ -175,7 +177,7 @@ Do not output markdown text or explanation outside JSON.
         chat = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile",
-            temperature=0.2,
+            temperature=0.1,
             response_format={"type": "json_object"}
         )
         return jsonify(json.loads(chat.choices[0].message.content))
