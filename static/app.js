@@ -104,12 +104,16 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         container.appendChild(script);
     }
-
-    function triggerAIAnalysis(symbol) {
+function triggerAIAnalysis(symbol) {
         runAiBtn.textContent = "Analyzing Live Chart...";
         runAiBtn.disabled = true;
 
-        fetch(`/api/analyze/${symbol}`)
+        // Fetch company data first to get exact live price, then pass it to analyze endpoint
+        fetch(`/api/company/${symbol}`)
+            .then(res => res.json())
+            .then(data => {
+                return fetch(`/api/analyze/${symbol}?live_price=${data.currentPrice}`);
+            })
             .then(res => res.json())
             .then(aiData => {
                 runAiBtn.textContent = "🚀 Run Groq AI Analysis";
