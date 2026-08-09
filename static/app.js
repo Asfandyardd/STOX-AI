@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (companyRes.error) throw new Error(companyRes.error);
 
+            renderHeaderMeta(companyRes);
             renderTradingViewWidgets(companyRes.symbol, companyRes.exchange);
             renderAIData(aiRes);
             renderNewsData(newsRes);
@@ -50,10 +51,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function renderHeaderMeta(data) {
+        const symbolEl = document.getElementById('stockSymbol');
+        if (symbolEl) {
+            symbolEl.textContent = `${data.companyName} (${data.symbol})`;
+        }
+    }
+
     function renderTradingViewWidgets(symbol, exchange) {
         let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
-        // 1. Upper Right Live TradingView Quote Ticker
+        // 1. Upper Right Live TradingView Quote Ticker Banner
         const tickerContainer = document.getElementById('tradingview-ticker-container');
         if (tickerContainer) {
             tickerContainer.innerHTML = `
