@@ -38,18 +38,10 @@
         </div>
 
         <main id="dashboard" class="dashboard hidden">
-            <!-- Stock Banner Header -->
-            <section class="yf-stock-header">
-                <div>
-                    <h1 id="stockSymbol">Company Name (TICKER)</h1>
-                    <p id="tradingDate" class="yf-muted">NasdaqGS - Real-Time Price ($USD)</p>
-                </div>
-                <div class="yf-price-block">
-                    <div class="price-row">
-                        <span id="currentPrice" class="price-big">$0.00</span>
-                        <span id="livePulse" class="pulse-indicator"></span>
-                    </div>
-                    <span id="priceChange" class="price-change up">+$0.00 (+0.00%)</span>
+            <!-- Stock Banner Header with TradingView Symbol Info Widget Injection -->
+            <section class="yf-stock-header" style="display: block;">
+                <div id="topSymbolInfoContainer" style="width: 100%;">
+                    <!-- TradingView Symbol Info Widget injected dynamically to match chart 100% -->
                 </div>
             </section>
 
