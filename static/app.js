@@ -3,6 +3,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("searchInput");
     const loadingSection = document.getElementById("loadingSection");
     const messageBox = document.getElementById("messageBox");
+    const runAiBtn = document.getElementById("runAiBtn");
+
+    let currentActiveSymbol = "BTC";
+    let currentExchangeString = "BINANCE:BTCUSDT";
 
     fetchStockData("BTC");
 
@@ -12,6 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (symbol) {
             fetchStockData(symbol);
         }
+    });
+
+    runAiBtn.addEventListener("click", () => {
+        triggerAIAnalysis(currentActiveSymbol);
     });
 
     function showMessage(text, isError = false) {
@@ -24,6 +32,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function fetchStockData(symbol) {
         loadingSection.classList.remove("hidden");
+        currentActiveSymbol = symbol.toUpperCase();
+
+        // Reset AI panel view to prompt state on new search
+        document.getElementById("aiPromptState").classList.remove("hidden");
+        document.getElementById("aiResultsContainer").classList.add("hidden");
+        document.getElementById("aiSentiment").textContent = "READY";
+        document.getElementById("aiSentiment").className = "sentiment-badge neutral";
 
         fetch(`/api/company/${symbol}`)
             .then(res => res.json())
@@ -32,34 +47,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     throw new Error(data.error);
                 }
 
+                currentExchangeString = data.exchange;
                 document.getElementById("stockSymbol").textContent = `${data.companyName} (${data.symbol})`;
                 
-                // Update text-based live value block right above AI panel
-                document.getElementById("liveStockValue").textContent = `$${data.currentPrice.toFixed(2)}`;
-                const changePercent = (((data.currentPrice - data.previousClose) / data.previousClose) * 100).toFixed(2);
-                const changeBadge = document.getElementById("livePriceChange");
-                changeBadge.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent}%`;
-                changeBadge.className = `sentiment-badge ${changePercent >= 0 ? 'buy' : 'sell'}`;
-
+                // Render Charts & Official TradingView Ticker Widget Quote
                 renderTradingViewCharts(data.symbol, data.exchange);
+                renderTradingViewQuote(data.exchange);
                 renderFundamentals(data.symbol);
                 renderNews(data.symbol);
 
-                // Call AI Analysis with exact live value to ensure matching metrics
-                fetch(`/api/analyze/${data.symbol}?live_price=${data.currentPrice}`)
-                    .then(res => res.json())
-                    .then(aiData => {
-                        loadingSection.classList.add("hidden");
-                        if (!aiData.error) {
-                            updateAIUI(aiData);
-                        } else {
-                            console.error("AI Error:", aiData.error);
-                        }
-                    })
-                    .catch(err => {
-                        loadingSection.classList.add("hidden");
-                        console.error("AI fetch failed:", err);
-                    });
+                loadingSection.classList.add("hidden");
             })
             .catch(err => {
                 loadingSection.classList.add("hidden");
@@ -88,6 +85,49 @@ document.addEventListener("DOMContentLoaded", () => {
             "calendar": true,
             "support_host": "https://www.tradingview.com"
         });
+    }
+
+    function renderTradingViewQuote(exchange) {
+        const container = document.getElementById("tradingview-quote-container");
+        container.innerHTML = "";
+
+        const script = document.createElement("script");
+        script.type = "text/javascript";
+        script.src = "https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js";
+        script.async = true;
+        script.innerHTML = JSON.stringify({
+            "symbol": exchange,
+            "width": "100%",
+            "colorTheme": "dark",
+            "isTransparent": true,
+            "locale": "en"
+        });
+        container.appendChild(script);
+    }
+
+    function triggerAIAnalysis(symbol) {
+        runAiBtn.textContent = "Analyzing Live Chart...";
+        runAiBtn.disabled = true;
+
+        fetch(`/api/analyze/${symbol}`)
+            .then(res => res.json())
+            .then(aiData => {
+                runAiBtn.textContent = "🚀 Run Groq AI Analysis";
+                runAiBtn.disabled = false;
+
+                if (!aiData.error) {
+                    document.getElementById("aiPromptState").classList.add("hidden");
+                    document.getElementById("aiResultsContainer").classList.remove("hidden");
+                    updateAIUI(aiData);
+                } else {
+                    showMessage(`AI Error: ${aiData.error}`, true);
+                }
+            })
+            .catch(err => {
+                runAiBtn.textContent = "🚀 Run Groq AI Analysis";
+                runAiBtn.disabled = false;
+                showMessage("Failed to connect to Groq AI analytics.", true);
+            });
     }
 
     function renderFundamentals(symbol) {
