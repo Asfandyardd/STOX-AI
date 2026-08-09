@@ -120,82 +120,35 @@ def get_company(symbol):
         return jsonify({"error": f"Failed to fetch market data: {str(e)}"}), 500
 
 
-@app.route('/api/candles/<symbol>')
-def get_candles(symbol):
-    try:
-        data = get_live_market_data(symbol)
-        return jsonify({
-            "symbol": symbol.upper(),
-            "exchange": data["exchange"],
-            "candles": []
-        })
-    except Exception as e:
-        print(traceback.format_exc())
-        return jsonify({"candles": []})
-
-
-@app.route('/api/sentiment/<symbol>')
-def get_sentiment(symbol):
-    return jsonify({
-        "symbol": symbol.upper(),
-        "bullishPercent": 72,
-        "bearishPercent": 28,
-        "fearAndGreedIndex": 68,
-        "sentimentLabel": "Bullish Momentum"
-    })
-
-
-@app.route('/api/chat', methods=['POST'])
-def asset_chat():
-    try:
-        body = request.get_json() or {}
-        symbol = body.get("symbol", "Asset").upper()
-        question = body.get("question", "")
-
-        if not question:
-            return jsonify({"error": "No question provided."}), 400
-
-        if not groq_client:
-            return jsonify({"answer": f"Simulated AI response: Regarding {symbol}, conditions indicate active volume."})
-
-        prompt = f"You are a professional financial advisor. Answer concisely (under 3 sentences) about asset '{symbol}': '{question}'."
-
-        chat = groq_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
-            temperature=0.3
-        )
-        return jsonify({"answer": chat.choices[0].message.content})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/alert', methods=['POST'])
-def set_price_alert():
-    data = request.get_json() or {}
-    return jsonify({"success": True, "message": f"Alert set for {data.get('symbol')} at ${data.get('targetPrice')}!"})
-
-
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
+        # Fetch exact live data so AI coordinates targets & ranges with current prices
         data = get_live_market_data(symbol)
         latest_close = data["currentPrice"]
+        prev_close = data["previousClose"]
+        day_high = data["high"]
+        day_low = data["low"]
 
         prompt = f"""
-Analyze asset '{symbol.upper()}' at current price ${latest_close:.2f}.
+Analyze asset '{symbol.upper.strip() if hasattr(symbol, 'upper') else symbol}' based on these exact live session parameters:
+- Current Live Price: ${latest_close:.2f}
+- Previous Close: ${prev_close:.2f}
+- Day High: ${day_high:.2f}
+- Day Low: ${day_low:.2f}
+
 Respond strictly with valid JSON using the exact schema:
 {{
     "recommendation": "BUY" | "SELL" | "HOLD",
     "confidenceScore": <integer 0-100>,
-    "marketSummary": "<2 sentences>",
+    "marketSummary": "<2 sentences mentioning the current price level>",
     "currentTrend": "<1 sentence>",
     "keyStrengths": ["<str1>", "<str2>"],
     "keyRisks": ["<risk1>", "<risk2>"],
     "riskLevel": "Low" | "Medium" | "High",
     "nextMove": {{
         "predictedDirection": "BULLISH" | "BEARISH" | "SIDEWAYS",
-        "targetPrice": "$<price>",
+        "targetPrice": "$<price near current price>",
         "predictedRange": "$<low> - $<high>",
         "reasoning": "<1 sentence>"
     }}
@@ -207,15 +160,15 @@ Do not include markdown or extra commentary outside the JSON object.
             return jsonify({
                 "recommendation": "BUY",
                 "confidenceScore": 85,
-                "marketSummary": f"{symbol.upper()} is exhibiting strong relative volume and clear momentum.",
+                "marketSummary": f"{symbol.upper()} is trading near ${latest_close:.2f} with strong relative volume.",
                 "currentTrend": "Upward trend structure.",
                 "keyStrengths": ["High liquidity", "Favorable trend"],
                 "keyRisks": ["Short-term volatility"],
                 "riskLevel": "Medium",
                 "nextMove": {
                     "predictedDirection": "BULLISH",
-                    "targetPrice": f"${latest_close * 1.05:.2f}",
-                    "predictedRange": f"${latest_close * 0.98:.2f} - ${latest_close * 1.07:.2f}",
+                    "targetPrice": f"${latest_close * 1.03:.2f}",
+                    "predictedRange": f"${latest_close * 0.98:.2f} - ${latest_close * 1.05:.2f}",
                     "reasoning": "Technical parameters favor steady upward continuation."
                 }
             })
