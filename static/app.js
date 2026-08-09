@@ -6,8 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const dashboard = document.getElementById('dashboard');
     const messageBox = document.getElementById('messageBox');
 
-    let livePulseInterval = null;
-
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -30,8 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showElement(loadingSection);
         hideElement(dashboard);
 
-        if (livePulseInterval) clearInterval(livePulseInterval);
-
         try {
             const [companyRes, aiRes, newsRes] = await Promise.all([
                 fetchJSON(`/api/company/${symbol}`),
@@ -41,16 +37,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (companyRes.error) throw new Error(companyRes.error);
 
-            renderCompanyData(companyRes);
-            renderTradingViewWidget(companyRes.symbol, companyRes.exchange);
+            // 1. Resolve exact TradingView exchange syntax ticker string
+            let fullTicker = companyRes.exchange && companyRes.exchange.includes(':') 
+                ? companyRes.exchange 
+                : `NASDAQ:${companyRes.symbol}`;
+
+            // 2. Render TradingView Native Widgets (Chart + Symbol Info Header)
+            renderTradingViewWidgets(fullTicker);
+
+            // 3. Render AI Recommendations & News Data normally
             renderAIData(aiRes);
             renderNewsData(newsRes);
 
             hideElement(loadingSection);
             showElement(dashboard);
-
-            // Simulate real-time ticker pulsing
-            startLiveTickSim(companyRes.currentPrice);
 
         } catch (err) {
             hideElement(loadingSection);
@@ -58,39 +58,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderCompanyData(data) {
-        document.getElementById('stockSymbol').textContent = `${data.companyName} (${data.symbol})`;
-        document.getElementById('currentPrice').textContent = `$${data.currentPrice.toFixed(2)}`;
+    function renderTradingViewWidgets(fullTicker) {
+        // --- A. Render Upper Price & Symbol Info Widget (Matches chart data 100%) ---
+        const topInfoContainer = document.getElementById('topSymbolInfoContainer') || createTopInfoContainer();
+        topInfoContainer.innerHTML = `
+            <div class="tradingview-widget-container" style="width: 100%; height: 110px;">
+              <div class="tradingview-widget-container__widget" style="height:100%;width:100%;"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+              {
+                "symbol": "${fullTicker}",
+                "width": "100%",
+                "locale": "en",
+                "colorTheme": "dark",
+                "isTransparent": true
+              }
+              </script>
+            </div>
+        `;
 
-        const diff = data.currentPrice - data.previousClose;
-        const pct = data.previousClose ? ((diff / data.previousClose) * 100).toFixed(2) : '0.00';
-        const sign = diff >= 0 ? '+' : '';
-
-        const priceChangeEl = document.getElementById('priceChange');
-        priceChangeEl.textContent = `${sign}$${diff.toFixed(2)} (${sign}${pct}%)`;
-        priceChangeEl.className = `price-change ${diff >= 0 ? 'up' : 'down'}`;
-
-        document.getElementById('previousClose').textContent = `$${data.previousClose.toFixed(2)}`;
-        document.getElementById('dayRange').textContent = `$${data.low.toFixed(2)} - $${data.high.toFixed(2)}`;
-        document.getElementById('volume').textContent = Number(data.volume).toLocaleString();
-        document.getElementById('range52').textContent = `$${data.fiftyTwoWeekLow.toFixed(2)} - $${data.fiftyTwoWeekHigh.toFixed(2)}`;
+        // --- B. Render Main Candlestick Chart Widget ---
+        const chartContainer = document.getElementById('tradingview-container');
+        if (chartContainer) {
+            chartContainer.innerHTML = `
+                <iframe 
+                    src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
+                    style="width: 100%; height: 100%; border: none;" 
+                    allowtransparency="true" 
+                    scrolling="no">
+                </iframe>
+            `;
+        }
     }
 
-    function renderTradingViewWidget(symbol, exchange) {
-        const container = document.getElementById('tradingview-container');
-        if (!container) return;
-
-        // If exchange string already contains the full ticker syntax (e.g., "NYMEX:CL1!" or "BINANCE:BTCUSDT"), use it directly.
-        let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
-
-        container.innerHTML = `
-            <iframe 
-                src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
-                style="width: 100%; height: 100%; border: none;" 
-                allowtransparency="true" 
-                scrolling="no">
-            </iframe>
-        `;
+    function createTopInfoContainer() {
+        // Fallback helper if the DOM container container needs to be injected dynamically above the chart
+        const container = document.createElement('div');
+        container.id = 'topSymbolInfoContainer';
+        container.style.marginBottom = '20px';
+        const dashboardEl = document.getElementById('dashboard');
+        if (dashboardEl) dashboardEl.prepend(container);
+        return container;
     }
 
     function renderAIData(ai) {
@@ -132,22 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="yf-muted" style="font-size:0.78rem; margin-top:0.2rem;">Source: ${art.publisher}</p>
             </div>
         `).join('');
-    }
-
-    function startLiveTickSim(basePrice) {
-        let current = basePrice;
-        livePulseInterval = setInterval(() => {
-            const delta = (Math.random() - 0.49) * (basePrice * 0.001);
-            current += delta;
-            
-            const priceEl = document.getElementById('currentPrice');
-            const pulseEl = document.getElementById('livePulse');
-
-            if (priceEl) {
-                priceEl.textContent = `$${current.toFixed(2)}`;
-                pulseEl.style.backgroundColor = delta >= 0 ? 'var(--yf-green)' : 'var(--yf-red)';
-            }
-        }, 3000);
     }
 
     function showElement(el) { if (el) el.classList.remove('hidden'); }
