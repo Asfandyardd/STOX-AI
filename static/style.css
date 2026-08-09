@@ -1,11 +1,10 @@
-/* Authentic Yahoo Finance Dark Theme Base */
+/* Authentic Yahoo Finance Dark Theme Base (Mobile Optimized) */
 :root {
     --yf-bg: #0d1421;
     --yf-card-bg: #1b2230;
     --yf-border: #283347;
     --yf-text: #ffffff;
     --yf-muted: #95a3b8;
-    --yf-blue: #600parsing; /* Yahoo Purple/Blue Signature */
     --yf-accent-blue: #3b82f6;
     --yf-green: #22c55e;
     --yf-red: #ef4444;
