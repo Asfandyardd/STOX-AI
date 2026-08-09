@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (companyRes.error) throw new Error(companyRes.error);
 
-            renderCompanyStats(companyRes);
             renderTradingViewWidgets(companyRes.symbol, companyRes.exchange);
             renderAIData(aiRes);
             renderNewsData(newsRes);
@@ -51,18 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderCompanyStats(data) {
-        document.getElementById('stockSymbol').textContent = `${data.companyName} (${data.symbol})`;
-        document.getElementById('previousClose').textContent = `$${Number(data.previousClose || 0).toFixed(2)}`;
-        document.getElementById('dayRange').textContent = `$${Number(data.low || 0).toFixed(2)} - $${Number(data.high || 0).toFixed(2)}`;
-        document.getElementById('volume').textContent = Number(data.volume || 0).toLocaleString();
-        document.getElementById('range52').textContent = `$${Number(data.fiftyTwoWeekLow || 0).toFixed(2)} - $${Number(data.fiftyTwoWeekHigh || 0).toFixed(2)}`;
-    }
-
     function renderTradingViewWidgets(symbol, exchange) {
         let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
-        // 1. Upper Right Live TradingView Widget (Mini Quote Banner)
+        // 1. Upper Right Live TradingView Quote Ticker
         const tickerContainer = document.getElementById('tradingview-ticker-container');
         if (tickerContainer) {
             tickerContainer.innerHTML = `
@@ -86,6 +77,37 @@ document.addEventListener('DOMContentLoaded', () => {
                     scrolling="no">
                 </iframe>
             `;
+        }
+
+        // 3. TradingView Fundamental Data & Financials Widget
+        const fundContainer = document.getElementById('tradingview-fundamentals-container');
+        if (fundContainer) {
+            fundContainer.innerHTML = '';
+            const widgetDiv = document.createElement('div');
+            widgetDiv.className = "tradingview-widget-container";
+            widgetDiv.style.width = "100%";
+            widgetDiv.style.height = "100%";
+
+            const innerWidget = document.createElement('div');
+            innerWidget.className = "tradingview-widget-container__widget";
+            widgetDiv.appendChild(innerWidget);
+
+            const script = document.createElement('script');
+            script.type = "text/javascript";
+            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+                "symbol": fullTicker,
+                "colorTheme": "dark",
+                "isTransparent": false,
+                "largeChartUrl": "",
+                "displayMode": "regular",
+                "width": "100%",
+                "height": "460",
+                "locale": "en"
+            });
+            widgetDiv.appendChild(script);
+            fundContainer.appendChild(widgetDiv);
         }
     }
 
