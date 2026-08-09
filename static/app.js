@@ -3,10 +3,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("searchInput");
     const messageBox = document.getElementById("messageBox");
     const loadingSection = document.getElementById("loadingSection");
-    const dashboard = document.getElementById("dashboard");
 
-    // Default symbol on load
-    let currentSymbol = "BTC";
+    let currentSymbol = "TSLA";
 
     if (searchForm) {
         searchForm.addEventListener("submit", (e) => {
@@ -47,7 +45,6 @@ document.addEventListener("DOMContentLoaded", () => {
         showLoading(true);
 
         try {
-            // 1. Fetch Company/Asset Core Data
             const resComp = await fetch(`/api/company/${symbol}`);
             const compData = await resComp.json();
 
@@ -57,26 +54,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
             currentSymbol = compData.symbol;
             
-            // Update Header Information Safely
             const stockSymbolEl = document.getElementById("stockSymbol");
             if (stockSymbolEl) {
                 stockSymbolEl.textContent = `${compData.companyName} (${compData.symbol})`;
             }
 
-            // Render TradingView Widgets
+            // Render exact TradingView Web Widgets
             renderTradingViewChart(compData.exchange);
             renderTradingViewTicker(compData.exchange);
             renderTradingViewFundamentals(compData.symbol);
 
-            // 2. Fetch AI Analysis
-            const resAnalyze = await fetch(`/api/analyze/${symbol}`);
+            // Fetch AI Analysis synced with the exact exchange symbol data
+            const resAnalyze = await fetch(`/api/analyze/${compData.symbol}?exchange=${encodeURIComponent(compData.exchange)}`);
             const aiData = await resAnalyze.json();
             if (!aiData.error) {
                 updateAIUI(aiData);
             }
 
-            // 3. Fetch News
-            const resNews = await fetch(`/api/news/${symbol}`);
+            const resNews = await fetch(`/api/news/${compData.symbol}`);
             const newsData = await resNews.json();
             if (!newsData.error) {
                 updateNewsUI(newsData);
@@ -94,11 +89,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!container) return;
         container.innerHTML = "";
 
+        const widgetWrapper = document.createElement("div");
+        widgetWrapper.className = "tradingview-widget-container";
+        widgetWrapper.style.height = "100%";
+        widgetWrapper.style.width = "100%";
+
         const widgetDiv = document.createElement("div");
         widgetDiv.className = "tradingview-widget-container__widget";
-        widgetDiv.style.height = "100%";
+        widgetDiv.style.height = "calc(100% - 32px)";
         widgetDiv.style.width = "100%";
-        container.appendChild(widgetDiv);
+        widgetWrapper.appendChild(widgetDiv);
 
         const script = document.createElement("script");
         script.type = "text/javascript";
@@ -112,11 +112,14 @@ document.addEventListener("DOMContentLoaded", () => {
             "theme": "dark",
             "style": "1",
             "locale": "en",
+            "enable_publishing": false,
+            "hide_side_toolbar": false,
             "allow_symbol_change": false,
             "calendar": false,
             "support_host": "https://www.tradingview.com"
         });
-        container.appendChild(script);
+        widgetWrapper.appendChild(script);
+        container.appendChild(widgetWrapper);
     }
 
     function renderTradingViewTicker(exchangeSymbol) {
@@ -143,6 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!container) return;
         container.innerHTML = "";
 
+        // Uses TradingView Company Profile & Fundamental Data widget for exact web parity
         const script = document.createElement("script");
         script.type = "text/javascript";
         script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
@@ -176,7 +180,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const aiOutlook = document.getElementById("aiOutlook");
         if (aiOutlook) aiOutlook.textContent = data.currentTrend;
 
-        // Next Move Section
         if (data.nextMove) {
             const dirBadge = document.getElementById("predictedDirectionBadge");
             if (dirBadge) {
@@ -193,7 +196,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (reasoning) reasoning.textContent = data.nextMove.reasoning;
         }
 
-        // Factors
         const posList = document.getElementById("positiveFactors");
         if (posList) {
             posList.innerHTML = "";
@@ -234,6 +236,5 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Initial load on startup
     loadStockData(currentSymbol);
 });
