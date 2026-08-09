@@ -33,6 +33,7 @@ ASSET_REGISTRY = {
     "NFLX": {"yf": "NFLX", "tv": "NASDAQ:NFLX", "name": "Netflix Inc."},
     "AMD": {"yf": "AMD", "tv": "NASDAQ:AMD", "name": "Advanced Micro Devices Inc."}
 }
+
 def get_chart_synced_data(symbol):
     clean_symbol = symbol.strip().upper()
     
@@ -85,12 +86,11 @@ def get_chart_synced_data(symbol):
     except Exception as e:
         print(f"yfinance resolution error for {target_yf}: {e}")
 
-    # Fallback price maps so response never breaks if API limit hits
     fallback_prices = {
         "BTC": 64500.00, "ETH": 3500.00, "SOL": 145.00, "XRP": 0.55, 
         "DOGE": 0.12, "AAPL": 220.00, "TSLA": 328.58, "NVDA": 125.00, 
         "MSFT": 420.00, "AMZN": 180.00, "GOOGL": 175.00, "META": 480.00,
-        "GOLD": 2400.00, "OIL": 78.18, "SILVER": 28.50
+        "GOLD": 2400.00, "OIL": 78.18, "SILVER": 28.50, "AMD": 150.00
     }
     p = fallback_prices.get(clean_symbol, 150.00)
 
@@ -123,13 +123,25 @@ def analyze_stock(symbol):
     try:
         data = get_chart_synced_data(symbol)
         
-        latest_close = data["currentPrice"]
-        day_high = data["high"]
-        day_low = data["low"]
+        # Check if the frontend passed the live frontend chart price override
+        live_price_override = request.args.get('live_price')
+        if live_price_override:
+            try:
+                latest_close = float(live_price_override)
+                day_high = latest_close * 1.015
+                day_low = latest_close * 0.985
+            except:
+                latest_close = data["currentPrice"]
+                day_high = data["high"]
+                day_low = data["low"]
+        else:
+            latest_close = data["currentPrice"]
+            day_high = data["high"]
+            day_low = data["low"]
+
         asset_name = data["companyName"]
         exchange_param = data["exchange"]
 
-        # Forces Groq AI to strictly base analysis on the exact live resolved feed data
         prompt = f"""
 You are an expert financial analyst. Analyze market asset '{asset_name} ({symbol.upper()})' actively tracked via TradingView Real-Time Feed '{exchange_param}'.
 CRITICAL: You MUST base your analysis strictly and exclusively on these current real-time figures fetched from the active market session:
