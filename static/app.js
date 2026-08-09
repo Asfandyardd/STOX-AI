@@ -62,20 +62,35 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTradingViewWidgets(symbol, exchange) {
         let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
-        // 1. Render Upper Price Widget via TradingView frame
+        // Upper Price Ticker Widget (Live Real-time TradingView Quote Widget)
         const tickerContainer = document.getElementById('tradingview-ticker-container');
         if (tickerContainer) {
-            tickerContainer.innerHTML = `
-                <iframe 
-                    src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=2&symboledit=0&saveimage=0&toolbarbg=f1f3f6&studies=[]&theme=dark&style=3&timezone=Etc%2FUTC" 
-                    style="width: 100%; height: 85px; border: none; background: transparent;" 
-                    allowtransparency="true" 
-                    scrolling="no">
-                </iframe>
-            `;
+            tickerContainer.innerHTML = '';
+            const widgetDiv = document.createElement('div');
+            widgetDiv.className = "tradingview-widget-container";
+            widgetDiv.style.width = "100%";
+            widgetDiv.style.height = "100%";
+
+            const innerWidget = document.createElement('div');
+            innerWidget.className = "tradingview-widget-container__widget";
+            widgetDiv.appendChild(innerWidget);
+
+            const script = document.createElement('script');
+            script.type = "text/javascript";
+            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js";
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+                "symbol": fullTicker,
+                "width": "100%",
+                "colorTheme": "dark",
+                "isTransparent": true,
+                "locale": "en"
+            });
+            widgetDiv.appendChild(script);
+            tickerContainer.appendChild(widgetDiv);
         }
 
-        // 2. Render Main Candlestick Chart Widget
+        // Main Chart Ticker Widget
         const chartContainer = document.getElementById('tradingview-container');
         if (chartContainer) {
             chartContainer.innerHTML = `
@@ -90,33 +105,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderAIData(ai) {
-        if (ai.error) return;
+        if (!ai || ai.error) return;
 
         const aiSentimentEl = document.getElementById('aiSentiment');
-        aiSentimentEl.textContent = ai.recommendation || "HOLD";
-        aiSentimentEl.className = `sentiment-badge ${(ai.recommendation || 'hold').toLowerCase()}`;
+        if (aiSentimentEl) {
+            aiSentimentEl.textContent = ai.recommendation || "HOLD";
+            aiSentimentEl.className = `sentiment-badge ${(ai.recommendation || 'hold').toLowerCase()}`;
+        }
 
-        document.getElementById('aiConfidence').textContent = `${ai.confidenceScore || 0}%`;
-        document.getElementById('aiSummary').textContent = ai.marketSummary || 'N/A';
-        document.getElementById('aiOutlook').textContent = ai.currentTrend || 'N/A';
-        document.getElementById('riskLevel').textContent = ai.riskLevel || 'Medium';
+        const confidenceEl = document.getElementById('aiConfidence');
+        if (confidenceEl) confidenceEl.textContent = `${ai.confidenceScore || 0}%`;
+
+        const summaryEl = document.getElementById('aiSummary');
+        if (summaryEl) summaryEl.textContent = ai.marketSummary || 'N/A';
+
+        const outlookEl = document.getElementById('aiOutlook');
+        if (outlookEl) outlookEl.textContent = ai.currentTrend || 'N/A';
+
+        const riskEl = document.getElementById('riskLevel');
+        if (riskEl) riskEl.textContent = ai.riskLevel || 'Medium';
 
         if (ai.nextMove) {
             const dirBadge = document.getElementById('predictedDirectionBadge');
-            dirBadge.textContent = ai.nextMove.predictedDirection || 'NEUTRAL';
-            dirBadge.className = `sentiment-badge ${(ai.nextMove.predictedDirection || 'neutral').toLowerCase()}`;
+            if (dirBadge) {
+                dirBadge.textContent = ai.nextMove.predictedDirection || 'NEUTRAL';
+                dirBadge.className = `sentiment-badge ${(ai.nextMove.predictedDirection || 'neutral').toLowerCase()}`;
+            }
 
-            document.getElementById('targetPrice').textContent = ai.nextMove.targetPrice || '—';
-            document.getElementById('predictedRange').textContent = ai.nextMove.predictedRange || '—';
-            document.getElementById('nextMoveReasoning').textContent = ai.nextMove.reasoning || '';
+            const targetPriceEl = document.getElementById('targetPrice');
+            if (targetPriceEl) targetPriceEl.textContent = ai.nextMove.targetPrice || '—';
+
+            const predictedRangeEl = document.getElementById('predictedRange');
+            if (predictedRangeEl) predictedRangeEl.textContent = ai.nextMove.predictedRange || '—';
+
+            const reasoningEl = document.getElementById('nextMoveReasoning');
+            if (reasoningEl) reasoningEl.textContent = ai.nextMove.reasoning || '';
         }
 
-        document.getElementById('positiveFactors').innerHTML = (ai.keyStrengths || []).map(s => `<li>${s}</li>`).join('');
-        document.getElementById('riskFactors').innerHTML = (ai.keyRisks || []).map(r => `<li>${r}</li>`).join('');
+        const posEl = document.getElementById('positiveFactors');
+        if (posEl) {
+            posEl.innerHTML = (ai.keyStrengths || []).map(s => `<li>${s}</li>`).join('');
+        }
+
+        const riskFactorsEl = document.getElementById('riskFactors');
+        if (riskFactorsEl) {
+            riskFactorsEl.innerHTML = (ai.keyRisks || []).map(r => `<li>${r}</li>`).join('');
+        }
     }
 
     function renderNewsData(news) {
         const newsListEl = document.getElementById('newsList');
+        if (!newsListEl) return;
         if (!news.articles || news.articles.length === 0) {
             newsListEl.innerHTML = '<p class="yf-muted">No news updates available.</p>';
             return;
