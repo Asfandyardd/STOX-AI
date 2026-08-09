@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stox! LIVE</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.2">
 </head>
 <body>
     <div class="yf-wrapper">
@@ -64,16 +64,14 @@
                         </div>
                     </article>
 
-                    <!-- Key Indicators Table -->
+                    <!-- Key Statistics & Fundamentals Powered by TradingView -->
                     <article class="yf-card">
-                        <h2>Key Statistics & Fundamentals</h2>
-                        <div class="stats-grid">
-                            <div class="stat-item"><span>Previous Close</span><strong id="previousClose">$0.00</strong></div>
-                            <div class="stat-item"><span>Day's Range</span><strong id="dayRange">$0.00 - $0.00</strong></div>
-                            <div class="stat-item"><span>Volume</span><strong id="volume">0</strong></div>
-                            <div class="stat-item"><span>52 Week Range</span><strong id="range52">$0.00 - $0.00</strong></div>
-                            <div class="stat-item"><span>Volatility</span><strong id="volatility">Moderate</strong></div>
-                            <div class="stat-item"><span>Risk Profile</span><strong id="riskLevel">Medium</strong></div>
+                        <div class="card-header">
+                            <h2>Key Statistics & Fundamentals</h2>
+                            <span class="badge">TradingView Live</span>
+                        </div>
+                        <div id="tradingview-fundamentals-container" style="width: 100%; min-height: 460px; background: transparent; border-radius: 8px; overflow: hidden;">
+                            <!-- Injected dynamically via app.js -->
                         </div>
                     </article>
 
@@ -141,6 +139,6 @@
         </main>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=3.1"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=3.2"></script>
 </body>
 </html>
