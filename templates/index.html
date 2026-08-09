@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stox! LIVE</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.3">
 </head>
 <body>
     <div class="yf-wrapper">
@@ -14,7 +14,7 @@
                 <span class="yf-logo">Stox! <span>Live</span></span>
             </div>
             <form id="searchForm" class="yf-search-box">
-                <input type="text" id="searchInput" placeholder="Search symbols (e.g. AAPL, NVDA, TSLA)..." required />
+                <input type="text" id="searchInput" placeholder="Search symbols (e.g. AAPL, BTC, ETH, GOLD, OIL)..." required />
                 <button type="submit">Search</button>
             </form>
             <div class="market-status">
@@ -139,6 +139,6 @@
         </main>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=3.2"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=3.3"></script>
 </body>
 </html>
