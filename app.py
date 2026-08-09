@@ -53,9 +53,12 @@ def get_chart_synced_data(symbol):
             high_price = float(todays_data['High'].max())
             low_price = float(todays_data['Low'].min())
             
+            info = ticker_obj.info
+            company_name = info.get('longName', info.get('shortName', default_name))
+            
             return {
                 "symbol": clean_symbol,
-                "companyName": default_name,
+                "companyName": company_name,
                 "currentPrice": round(current_price, 2),
                 "previousClose": round(prev_close, 2),
                 "high": round(high_price, 2),
@@ -156,10 +159,12 @@ Do not output markdown text or explanation outside JSON.
 
 @app.route('/api/news/<symbol>')
 def get_news(symbol):
+    clean_symbol = symbol.upper()
     return jsonify({
         "overallSentiment": "Bullish",
         "articles": [
-            {"title": f"{symbol.upper()} shows steady live movement across active TradingView feeds.", "link": "https://www.tradingview.com", "publisher": "TradingView"}
+            {"title": f"{clean_symbol} exhibits dynamic volume shifts across global TradingView live feeds.", "link": "https://www.tradingview.com", "publisher": "TradingView Market Feed"},
+            {"title": f"Technical momentum update: Analyzing key breakout levels for {clean_symbol}.", "link": "https://www.tradingview.com/markets/", "publisher": "TradingView News"}
         ]
     })
 
