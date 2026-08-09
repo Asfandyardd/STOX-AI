@@ -3,142 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stox! LIVE</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.3">
+    <title>Stox! Live - Real-time Stock Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://s3.tradingview.com/tv.js"></script>
 </head>
 <body>
-    <div class="yf-wrapper">
-        <!-- Yahoo Finance Header -->
-        <header class="yf-navbar">
-            <div class="brand">
-                <span class="yf-logo">Stox! <span>Live</span></span>
+    <div class="app-container">
+        <!-- Header Navigation -->
+        <header class="app-header">
+            <div class="header-top">
+                <div class="logo-section">
+                    <h1 class="app-logo">Stox!</h1>
+                    <span class="logo-subtitle">Live Analysis</span>
+                </div>
+                
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        id="assetSearch" 
+                        class="search-input" 
+                        placeholder="Search stocks, crypto, commodities... (e.g., AAPL, BTC, GOLD)"
+                        autocomplete="off"
+                    >
+                    <div id="searchSuggestions" class="search-suggestions"></div>
+                </div>
+
+                <div class="header-actions">
+                    <button id="favoritesBtn" class="header-btn">
+                        <span class="icon">★</span>
+                        Favorites
+                    </button>
+                    <button id="settingsBtn" class="header-btn">
+                        <span class="icon">⚙️</span>
+                        Settings
+                    </button>
+                </div>
             </div>
-            <form id="searchForm" class="yf-search-box">
-                <input type="text" id="searchInput" placeholder="Search symbols (e.g. AAPL, BTC, ETH, GOLD, OIL)..." required />
-                <button type="submit">Search</button>
-            </form>
-            <div class="market-status">
-                <span class="status-dot"></span> U.S. Markets Open
+
+            <!-- Market Overview Bar -->
+            <div class="market-overview-bar">
+                <div class="market-item">
+                    <span class="market-label">S&P 500</span>
+                    <span class="market-value">4,585.25</span>
+                    <span class="market-change positive">+45.50 (+1.00%)</span>
+                </div>
+                <div class="market-item">
+                    <span class="market-label">NASDAQ 100</span>
+                    <span class="market-value">15,920.75</span>
+                    <span class="market-change positive">+125.30 (+0.79%)</span>
+                </div>
+                <div class="market-item">
+                    <span class="market-label">VIX</span>
+                    <span class="market-value">18.5</span>
+                    <span class="market-change neutral">Moderate Volatility</span>
+                </div>
+                <div class="market-item">
+                    <span class="market-label">Market Sentiment</span>
+                    <span class="market-value">Bullish</span>
+                    <span class="market-change positive">Positive Momentum</span>
+                </div>
             </div>
         </header>
 
-        <!-- Dynamic Ticker Tape -->
-        <div class="ticker-tape">
-            <div class="ticker-item"><span>S&P 500</span> <strong>5,117.09</strong> <span class="up">+0.42%</span></div>
-            <div class="ticker-item"><span>Dow 30</span> <strong>38,989.84</strong> <span class="down">-0.11%</span></div>
-            <div class="ticker-item"><span>Nasdaq</span> <strong>16,207.51</strong> <span class="up">+0.80%</span></div>
-            <div class="ticker-item"><span>Russell 2000</span> <strong>2,076.35</strong> <span class="up">+0.25%</span></div>
-        </div>
-
-        <div id="messageBox" class="yf-alert hidden"></div>
-
-        <div id="loadingSection" class="yf-loading hidden">
-            <div class="yf-spinner"></div>
-            <p>Fetching real-time market data & Groq AI insights...</p>
-        </div>
-
-        <main id="dashboard" class="dashboard hidden">
-            <!-- Stock Banner Header with TradingView Live Price Widget -->
-            <section class="yf-stock-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
-                <div>
-                    <h1 id="stockSymbol">Company Name (TICKER)</h1>
-                    <p id="tradingDate" class="yf-muted">TradingView Real-Time Feed ($USD)</p>
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Stock Header Section -->
+            <section id="assetHeader" class="asset-header">
+                <div class="asset-info">
+                    <div class="asset-name-ticker">
+                        <h2 id="assetName" class="asset-name">-</h2>
+                        <span id="assetTicker" class="asset-ticker">-</span>
+                    </div>
+                    <div class="asset-price-info">
+                        <div class="current-price">
+                            <span id="currentPrice" class="price">$0.00</span>
+                            <span id="priceChange" class="change">+0.00 (+0.00%)</span>
+                        </div>
+                    </div>
                 </div>
-                <!-- Dynamic TradingView Single Ticker Widget Container -->
-                <div id="tradingview-ticker-container" style="min-width: 240px; height: 75px;">
-                    <!-- Injected dynamically via app.js -->
+
+                <!-- TradingView Mini Ticker Widget -->
+                <div id="tradingviewTickerWidget" class="tradingview-widget-container ticker-widget">
+                    <div class="tradingview-widget-container__widget"></div>
                 </div>
             </section>
 
-            <div class="yf-grid">
-                <!-- Main Chart Column -->
-                <div class="main-column">
-                    <!-- Real-Time TradingView Candlestick Chart Widget -->
-                    <article class="yf-card chart-card">
-                        <div class="card-header">
-                            <h2>Live Candlestick Market Chart</h2>
-                            <span class="badge">Real-Time Feed</span>
+            <!-- Two-Column Layout -->
+            <div class="content-grid">
+                <!-- Left Column: Charts & Analysis -->
+                <div class="left-column">
+                    <!-- TradingView Advanced Chart -->
+                    <section class="section chart-section">
+                        <h3 class="section-title">Live Chart</h3>
+                        <div id="tradingviewChart" class="tradingview-chart-container">
+                            <div class="chart-placeholder">
+                                <p>Select an asset to display live chart</p>
+                            </div>
                         </div>
-                        <div id="tradingview-container" class="chart-container">
-                            <!-- Injected dynamically via app.js -->
-                        </div>
-                    </article>
+                    </section>
 
-                    <!-- Key Statistics & Fundamentals Powered by TradingView -->
-                    <article class="yf-card">
-                        <div class="card-header">
-                            <h2>Key Statistics & Fundamentals</h2>
-                            <span class="badge">TradingView Live</span>
+                    <!-- Technical Analysis & Groq AI Recommendation -->
+                    <section class="section analysis-section">
+                        <h3 class="section-title">AI Analysis & Recommendation</h3>
+                        <div id="analysisContainer" class="analysis-container">
+                            <div class="analysis-placeholder">
+                                <p>Load an asset to see AI-powered analysis</p>
+                            </div>
                         </div>
-                        <div id="tradingview-fundamentals-container" style="width: 100%; min-height: 460px; background: transparent; border-radius: 8px; overflow: hidden;">
-                            <!-- Injected dynamically via app.js -->
-                        </div>
-                    </article>
-
-                    <!-- Yahoo Style News Grid -->
-                    <article class="yf-card">
-                        <div class="card-header">
-                            <h2>Recent News Coverage</h2>
-                            <span id="newsSentiment" class="sentiment-badge buy">Bullish</span>
-                        </div>
-                        <div id="newsList" class="news-grid"></div>
-                    </article>
+                    </section>
                 </div>
 
-                <!-- AI Analysis Side Panel -->
-                <aside class="sidebar-column">
-                    <article class="yf-card ai-card">
-                        <div class="card-header">
-                            <h2>Groq AI Analytics</h2>
-                            <span id="aiSentiment" class="sentiment-badge buy">BUY</span>
+                <!-- Right Column: Fundamentals & News -->
+                <div class="right-column">
+                    <!-- Key Statistics & Fundamentals -->
+                    <section class="section fundamentals-section">
+                        <h3 class="section-title">Key Statistics & Fundamentals</h3>
+                        <div id="tradingviewFundamentals" class="tradingview-widget-container fundamentals-widget">
+                            <div class="tradingview-widget-container__widget"></div>
                         </div>
-
-                        <div class="confidence-box">
-                            <span>AI Confidence Score</span>
-                            <strong id="aiConfidence">0%</strong>
-                        </div>
-
-                        <div class="ai-section">
-                            <h3>Market Executive Summary</h3>
-                            <p id="aiSummary">Loading AI analysis...</p>
-                        </div>
-
-                        <!-- AI Predicted Next Moves -->
-                        <div class="next-move-box">
-                            <div class="next-move-header">
-                                <strong>🎯 AI Target & Next Move</strong>
-                                <span id="predictedDirectionBadge" class="sentiment-badge neutral">NEUTRAL</span>
+                        <div id="fundamentalsData" class="fundamentals-data">
+                            <div class="fundamental-item">
+                                <span class="fundamental-label">52-Week High</span>
+                                <span class="fundamental-value">-</span>
                             </div>
-                            <div class="next-move-details">
-                                <div><span>Target Price:</span> <strong id="targetPrice" class="accent">—</strong></div>
-                                <div><span>Expected Range:</span> <strong id="predictedRange">—</strong></div>
+                            <div class="fundamental-item">
+                                <span class="fundamental-label">52-Week Low</span>
+                                <span class="fundamental-value">-</span>
                             </div>
-                            <p id="nextMoveReasoning"></p>
-                        </div>
-
-                        <div class="ai-section">
-                            <h3>Technical Outlook</h3>
-                            <p id="aiOutlook">Loading...</p>
-                        </div>
-
-                        <div class="ai-factors">
-                            <div class="factor-group positive">
-                                <h4>Key Strengths</h4>
-                                <ul id="positiveFactors"></ul>
+                            <div class="fundamental-item">
+                                <span class="fundamental-label">P/E Ratio</span>
+                                <span class="fundamental-value">-</span>
                             </div>
-                            <div class="factor-group negative">
-                                <h4>Risk Factors</h4>
-                                <ul id="riskFactors"></ul>
+                            <div class="fundamental-item">
+                                <span class="fundamental-label">Market Cap</span>
+                                <span class="fundamental-value">-</span>
                             </div>
                         </div>
+                    </section>
 
-                        <p class="ai-source">Powered by Groq AI (Llama-3.3-70b)</p>
-                    </article>
-                </aside>
+                    <!-- News Section -->
+                    <section class="section news-section">
+                        <h3 class="section-title">Latest News</h3>
+                        <div id="newsContainer" class="news-container">
+                            <div class="news-placeholder">
+                                <p>News updates appear here</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </div>
         </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span class="footer-text">Stox! Live • Powered by TradingView & Groq AI</span>
+                <div class="footer-links">
+                    <a href="#" class="footer-link">About</a>
+                    <a href="#" class="footer-link">Disclaimer</a>
+                    <a href="#" class="footer-link">Contact</a>
+                </div>
+            </div>
+        </footer>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=3.3"></script>
+    <!-- Modal for Recommendation Details -->
+    <div id="recommendationModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <h2 id="modalTitle" class="modal-title">Recommendation Details</h2>
+            <div id="modalBody" class="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Analyzing...</p>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="notification-toast"></div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
