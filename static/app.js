@@ -1,720 +1,194 @@
-/**
- * Stox! Live Frontend
- * Real-time stock analysis with TradingView & Groq AI
- */
+document.addEventListener('DOMContentLoaded', () => {
+    const searchForm = document.getElementById('searchForm');
+    const searchInput = document.getElementById('searchInput');
+    const loadingSection = document.getElementById('loadingSection');
+    const dashboard = document.getElementById('dashboard');
+    const messageBox = document.getElementById('messageBox');
 
-// ============================================
-// CONSTANTS & CONFIGURATION
-// ============================================
+    // Auto-load BTC on initial page load so AI analysis is instantly present
+    runDashboard('BTC');
 
-const CONFIG = {
-    API_BASE: '/api',
-    DEBOUNCE_DELAY: 300,
-    CHART_HEIGHT: 450,
-    TOAST_DURATION: 4000,
-    DEFAULT_ASSETS: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']
-};
-
-// Asset cache
-const assetCache = new Map();
-let currentAsset = null;
-
-// ============================================
-// DOM ELEMENTS
-// ============================================
-
-const elements = {
-    // Search
-    searchInput: document.getElementById('assetSearch'),
-    searchSuggestions: document.getElementById('searchSuggestions'),
-    
-    // Asset Header
-    assetHeader: document.getElementById('assetHeader'),
-    assetName: document.getElementById('assetName'),
-    assetTicker: document.getElementById('assetTicker'),
-    currentPrice: document.getElementById('currentPrice'),
-    priceChange: document.getElementById('priceChange'),
-    
-    // Sections
-    analysisContainer: document.getElementById('analysisContainer'),
-    newsContainer: document.getElementById('newsContainer'),
-    fundamentalsData: document.getElementById('fundamentalsData'),
-    tradingviewChart: document.getElementById('tradingviewChart'),
-    tradingviewTickerWidget: document.getElementById('tradingviewTickerWidget'),
-    tradingviewFundamentals: document.getElementById('tradingviewFundamentals'),
-    
-    // Modal
-    modal: document.getElementById('recommendationModal'),
-    modalTitle: document.getElementById('modalTitle'),
-    modalBody: document.getElementById('modalBody'),
-    modalClose: document.querySelector('.modal-close'),
-    
-    // UI Elements
-    loadingSpinner: document.getElementById('loadingSpinner'),
-    notificationToast: document.getElementById('notificationToast'),
-    favoritesBtn: document.getElementById('favoritesBtn'),
-    settingsBtn: document.getElementById('settingsBtn')
-};
-
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
-/**
- * Debounce function to prevent excessive API calls
- */
-function debounce(func, delay) {
-    let timeoutId;
-    return function (...args) {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => func(...args), delay);
-    };
-}
-
-/**
- * Show loading spinner
- */
-function showLoading(show = true) {
-    if (show) {
-        elements.loadingSpinner.classList.add('active');
-    } else {
-        elements.loadingSpinner.classList.remove('active');
-    }
-}
-
-/**
- * Show notification toast
- */
-function showNotification(message, type = 'info', duration = CONFIG.TOAST_DURATION) {
-    elements.notificationToast.textContent = message;
-    elements.notificationToast.className = `notification-toast ${type} show`;
-    
-    setTimeout(() => {
-        elements.notificationToast.classList.remove('show');
-    }, duration);
-}
-
-/**
- * Format number as currency
- */
-function formatCurrency(value) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(value);
-}
-
-/**
- * Format percentage
- */
-function formatPercent(value, decimals = 2) {
-    return (value >= 0 ? '+' : '') + value.toFixed(decimals) + '%';
-}
-
-/**
- * Format large numbers
- */
-function formatNumber(value) {
-    return new Intl.NumberFormat('en-US').format(value);
-}
-
-// ============================================
-// SEARCH FUNCTIONALITY
-// ============================================
-
-/**
- * Handle asset search
- */
-async function handleSearch(query) {
-    if (!query || query.length < 1) {
-        elements.searchSuggestions.classList.remove('active');
-        return;
-    }
-
-    try {
-        const response = await fetch(`${CONFIG.API_BASE}/search?q=${encodeURIComponent(query)}`);
-        
-        if (!response.ok) {
-            elements.searchSuggestions.classList.remove('active');
-            return;
-        }
-
-        const data = await response.json();
-        displaySearchSuggestions(data);
-    } catch (error) {
-        console.error('Search error:', error);
-        showNotification('Search failed. Please try again.', 'error');
-    }
-}
-
-/**
- * Display search suggestions
- */
-function displaySearchSuggestions(data) {
-    elements.searchSuggestions.innerHTML = '';
-
-    const suggestions = data.suggestions || [];
-    if (data.asset) {
-        suggestions.unshift(data.asset);
-    }
-
-    if (suggestions.length === 0) {
-        elements.searchSuggestions.innerHTML = `
-            <div class="search-suggestion-item" style="text-align: center; color: #9e9e9e;">
-                No results found
-            </div>
-        `;
-        elements.searchSuggestions.classList.add('active');
-        return;
-    }
-
-    suggestions.forEach(asset => {
-        const item = document.createElement('div');
-        item.className = 'search-suggestion-item';
-        item.innerHTML = `
-            <span class="suggestion-name">${asset.name}</span>
-            <span class="suggestion-symbol">${asset.symbol} • ${asset.type}</span>
-        `;
-        item.addEventListener('click', () => selectAsset(asset));
-        elements.searchSuggestions.appendChild(item);
-    });
-
-    elements.searchSuggestions.classList.add('active');
-}
-
-/**
- * Close search suggestions when clicking outside
- */
-function closeSearchSuggestions() {
-    elements.searchSuggestions.classList.remove('active');
-}
-
-/**
- * Setup search event listeners
- */
-function setupSearchListeners() {
-    elements.searchInput.addEventListener(
-        'input',
-        debounce((e) => handleSearch(e.target.value), CONFIG.DEBOUNCE_DELAY)
-    );
-
-    // Close suggestions when clicking outside
-    document.addEventListener('click', (e) => {
-        if (e.target !== elements.searchInput) {
-            closeSearchSuggestions();
-        }
-    });
-
-    elements.searchInput.addEventListener('focus', (e) => {
-        if (e.target.value) {
-            handleSearch(e.target.value);
-        }
-    });
-}
-
-// ============================================
-// ASSET SELECTION & LOADING
-// ============================================
-
-/**
- * Select asset from search
- */
-async function selectAsset(asset) {
-    currentAsset = asset;
-    elements.searchInput.value = asset.name;
-    closeSearchSuggestions();
-    
-    await loadAsset(asset.symbol);
-}
-
-/**
- * Load asset data and initialize widgets
- */
-async function loadAsset(symbol) {
-    showLoading(true);
-
-    try {
-        // Check cache first
-        if (assetCache.has(symbol)) {
-            const asset = assetCache.get(symbol);
-            updateAssetUI(asset);
-            showLoading(false);
-            return;
-        }
-
-        // Fetch asset data
-        const response = await fetch(`${CONFIG.API_BASE}/asset/${symbol}`);
-        if (!response.ok) {
-            throw new Error('Asset not found');
-        }
-
-        const assetData = await response.json();
-        assetCache.set(symbol, assetData);
-        
-        currentAsset = assetData;
-        updateAssetUI(assetData);
-
-        // Load additional data
-        await Promise.all([
-            loadNews(symbol),
-            initializeTradingViewWidgets(assetData)
-        ]);
-
-        showNotification(`${assetData.name} loaded successfully`, 'success');
-        
-    } catch (error) {
-        console.error('Asset loading error:', error);
-        showNotification('Failed to load asset. Please try again.', 'error');
-    } finally {
-        showLoading(false);
-    }
-}
-
-/**
- * Update asset UI with new data
- */
-function updateAssetUI(asset) {
-    elements.assetName.textContent = asset.name || '-';
-    elements.assetTicker.textContent = asset.symbol || '-';
-    
-    // Update price info (placeholder - will be updated by TradingView)
-    const data = asset.data || {};
-    elements.currentPrice.textContent = formatCurrency(data.current_price || 0);
-    
-    // Update fundamentals
-    updateFundamentals(data);
-}
-
-/**
- * Update fundamentals display
- */
-function updateFundamentals(data) {
-    const items = elements.fundamentalsData.querySelectorAll('.fundamental-item');
-    const values = [
-        data.high_52w ? formatCurrency(data.high_52w) : '-',
-        data.low_52w ? formatCurrency(data.low_52w) : '-',
-        data.pe_ratio ? data.pe_ratio.toFixed(2) : '-',
-        data.market_cap || '-'
-    ];
-
-    items.forEach((item, index) => {
-        const valueSpan = item.querySelector('.fundamental-value');
-        if (valueSpan && values[index]) {
-            valueSpan.textContent = values[index];
-        }
-    });
-}
-
-// ============================================
-// TRADINGVIEW WIDGET INTEGRATION
-// ============================================
-
-/**
- * Initialize TradingView widgets
- */
-async function initializeTradingViewWidgets(asset) {
-    try {
-        // Clear existing widgets
-        elements.tradingviewChart.innerHTML = '';
-        elements.tradingviewTickerWidget.innerHTML = '<div class="tradingview-widget-container__widget"></div>';
-        elements.tradingviewFundamentals.innerHTML = '<div class="tradingview-widget-container__widget"></div>';
-
-        // Chart Widget
-        const chartScript = document.createElement('script');
-        chartScript.type = 'text/javascript';
-        chartScript.src = 'https://s3.tradingview.com/tv.js';
-        chartScript.async = true;
-        chartScript.onload = () => {
-            new TradingView.widget({
-                autosize: true,
-                symbol: asset.tv_symbol,
-                interval: 'D',
-                timezone: 'Etc/UTC',
-                theme: 'dark',
-                style: '1',
-                locale: 'en',
-                enable_publishing: false,
-                allow_symbol_change: true,
-                container_id: 'tradingviewChart',
-                studies: ['Volume@tv-basicstudies', 'RSI@tv-basicstudies'],
-            });
-        };
-        elements.tradingviewChart.appendChild(chartScript);
-
-        // Ticker Widget
-        const tickerScript = document.createElement('script');
-        tickerScript.type = 'text/javascript';
-        tickerScript.src = 'https://s3.tradingview.com/tv.js';
-        tickerScript.async = true;
-        tickerScript.onload = () => {
-            new TradingView.ticker({
-                symbols: [
-                    { proName: asset.tv_symbol, title: asset.symbol }
-                ],
-                showSymbolLogo: true,
-                locale: 'en',
-                colorTheme: 'dark',
-                isTransparent: false,
-                container_id: 'tradingviewTickerWidget'
-            });
-        };
-        elements.tradingviewTickerWidget.appendChild(tickerScript);
-
-        // Fundamentals Widget
-        const fundamentalsScript = document.createElement('script');
-        fundamentalsScript.type = 'text/javascript';
-        fundamentalsScript.src = 'https://s3.tradingview.com/tv.js';
-        fundamentalsScript.async = true;
-        fundamentalsScript.onload = () => {
-            new TradingView.financialWidgets({
-                locale: 'en',
-                symbols: [asset.tv_symbol],
-                theme: 'dark',
-                container_id: 'tradingviewFundamentals'
-            });
-        };
-        elements.tradingviewFundamentals.appendChild(fundamentalsScript);
-
-        // After widgets load, trigger AI analysis
-        setTimeout(() => analyzeWithAI(asset), 3000);
-
-    } catch (error) {
-        console.error('TradingView widget error:', error);
-        elements.tradingviewChart.innerHTML = '<div class="chart-placeholder"><p>Chart failed to load</p></div>';
-    }
-}
-
-// ============================================
-// GROQ AI ANALYSIS
-// ============================================
-
-/**
- * Analyze asset with Groq AI
- */
-async function analyzeWithAI(asset) {
-    if (!asset) return;
-
-    showLoading(true);
-
-    try {
-        // Get current chart data (mock - in production, would extract from TradingView widget)
-        const chartData = {
-            symbol: asset.symbol,
-            name: asset.name,
-            type: asset.type,
-            current_price: 150.25,
-            high_price: 155.50,
-            low_price: 145.75,
-            volume: 45000000,
-            price_change: 3.25,
-            price_change_percent: 2.21,
-            chart_pattern: 'bullish_breakout'
-        };
-
-        const response = await fetch(`${CONFIG.API_BASE}/analyze`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(chartData)
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const symbol = searchInput.value.trim().toUpperCase();
+            if (symbol) runDashboard(symbol);
         });
-
-        if (!response.ok) {
-            throw new Error('Analysis failed');
-        }
-
-        const result = await response.json();
-        displayAnalysis(result.analysis, asset);
-
-    } catch (error) {
-        console.error('Analysis error:', error);
-        showNotification('AI analysis failed. Please try again.', 'error');
-    } finally {
-        showLoading(false);
-    }
-}
-
-/**
- * Display AI analysis results
- */
-function displayAnalysis(analysis, asset) {
-    const {
-        recommendation,
-        confidence_score,
-        market_summary,
-        technical_analysis,
-        price_targets,
-        next_moves,
-        predicted_direction,
-        expected_range,
-        risk_level,
-        key_support,
-        key_resistance
-    } = analysis;
-
-    const recommendationClass = recommendation.toLowerCase();
-    
-    elements.analysisContainer.innerHTML = `
-        <div class="recommendation-card">
-            <div class="recommendation-header">
-                <div>
-                    <div class="recommendation-badge ${recommendationClass}">
-                        ${recommendation}
-                    </div>
-                </div>
-                <div class="confidence-score">
-                    Confidence: ${confidence_score}%
-                </div>
-            </div>
-
-            <div class="market-summary">
-                ${market_summary}
-            </div>
-
-            <div class="recommendation-details">
-                <div class="detail-item">
-                    <div class="detail-label">Direction</div>
-                    <div class="detail-value">${predicted_direction}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Risk Level</div>
-                    <div class="detail-value">${risk_level}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Key Support</div>
-                    <div class="detail-value">${formatCurrency(key_support)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Key Resistance</div>
-                    <div class="detail-value">${formatCurrency(key_resistance)}</div>
-                </div>
-            </div>
-
-            <h4 style="margin-top: 20px; margin-bottom: 12px; color: #e8e8e8; font-weight: 600;">Price Targets</h4>
-            <div class="price-targets">
-                <div class="target-item">
-                    <div class="target-label">Bullish Target</div>
-                    <div class="target-value bullish">${formatCurrency(price_targets.bullish_target)}</div>
-                </div>
-                <div class="target-item">
-                    <div class="target-label">Bearish Target</div>
-                    <div class="target-value bearish">${formatCurrency(price_targets.bearish_target)}</div>
-                </div>
-                <div class="target-item">
-                    <div class="target-label">High Range</div>
-                    <div class="target-value">${formatCurrency(price_targets.neutral_range_high)}</div>
-                </div>
-                <div class="target-item">
-                    <div class="target-label">Low Range</div>
-                    <div class="target-value">${formatCurrency(price_targets.neutral_range_low)}</div>
-                </div>
-            </div>
-
-            <h4 style="margin-top: 20px; margin-bottom: 12px; color: #e8e8e8; font-weight: 600;">Expected Price Range</h4>
-            <div style="padding: 12px 16px; background-color: rgba(31, 149, 211, 0.05); border-left: 3px solid #1f95d3; border-radius: 6px;">
-                <div style="font-size: 13px; color: #9e9e9e; margin-bottom: 4px;">Min: ${formatCurrency(expected_range.min)} | Max: ${formatCurrency(expected_range.max)}</div>
-                <div style="font-size: 13px; color: #e8e8e8;">${expected_range.reasoning}</div>
-            </div>
-
-            <h4 style="margin-top: 20px; margin-bottom: 12px; color: #e8e8e8; font-weight: 600;">Next Moves</h4>
-            <ul class="next-moves-list">
-                ${next_moves.map(move => `<li class="next-move-item">${move}</li>`).join('')}
-            </ul>
-
-            <h4 style="margin-top: 20px; margin-bottom: 12px; color: #e8e8e8; font-weight: 600;">Technical Analysis</h4>
-            <div style="padding: 12px 16px; background-color: var(--tertiary-bg); border-radius: 6px; color: var(--text-primary);">
-                ${technical_analysis}
-            </div>
-
-            <button onclick="showAnalysisDetails('${asset.symbol}')" 
-                    style="margin-top: 16px; padding: 10px 16px; background-color: var(--accent-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                View Full Analysis
-            </button>
-        </div>
-    `;
-}
-
-/**
- * Show full analysis in modal
- */
-function showAnalysisDetails(symbol) {
-    elements.modalTitle.textContent = `Detailed Analysis - ${symbol}`;
-    elements.modalBody.innerHTML = `
-        <p>Complete technical analysis and market insights for ${symbol}.</p>
-        <p>This includes real-time chart pattern recognition, volume analysis, and momentum indicators powered by Groq AI's Llama-3.3-70b model.</p>
-    `;
-    elements.modal.classList.add('active');
-}
-
-// ============================================
-// NEWS SECTION
-// ============================================
-
-/**
- * Load news for asset
- */
-async function loadNews(symbol) {
-    try {
-        const response = await fetch(`${CONFIG.API_BASE}/news/${symbol}`);
-        if (!response.ok) {
-            throw new Error('News loading failed');
-        }
-
-        const data = await response.json();
-        displayNews(data.news || []);
-
-    } catch (error) {
-        console.error('News loading error:', error);
-    }
-}
-
-/**
- * Display news items
- */
-function displayNews(news) {
-    if (news.length === 0) {
-        elements.newsContainer.innerHTML = '<div class="news-placeholder"><p>No news available</p></div>';
-        return;
     }
 
-    elements.newsContainer.innerHTML = news.map(item => `
-        <div class="news-item">
-            <div class="news-title">${item.title}</div>
-            <div class="news-meta">
-                <span class="news-source">${item.source}</span>
-                <span class="news-time">${item.time}</span>
-            </div>
-            <div class="news-summary">${item.summary}</div>
-        </div>
-    `).join('');
-}
-
-// ============================================
-// MODAL FUNCTIONALITY
-// ============================================
-
-/**
- * Setup modal event listeners
- */
-function setupModalListeners() {
-    elements.modalClose.addEventListener('click', () => {
-        elements.modal.classList.remove('active');
-    });
-
-    elements.modal.addEventListener('click', (e) => {
-        if (e.target === elements.modal) {
-            elements.modal.classList.remove('active');
+    async function fetchJSON(url) {
+        const res = await fetch(url);
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error(`Invalid server response from ${url}`);
         }
-    });
-
-    // Close modal on escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && elements.modal.classList.contains('active')) {
-            elements.modal.classList.remove('active');
-        }
-    });
-}
-
-// ============================================
-// FAVORITES MANAGEMENT
-// ============================================
-
-/**
- * Load and display favorites
- */
-async function loadFavorites() {
-    try {
-        const response = await fetch(`${CONFIG.API_BASE}/favorites`);
-        if (!response.ok) {
-            throw new Error('Favorites loading failed');
-        }
-
-        const data = await response.json();
-        console.log('Favorites:', data.favorites);
-        // Implement favorites UI here
-
-    } catch (error) {
-        console.error('Favorites error:', error);
+        return res.json();
     }
-}
 
-// ============================================
-// INITIALIZATION
-// ============================================
+    async function runDashboard(symbol) {
+        hideElement(messageBox);
+        showElement(loadingSection);
 
-/**
- * Initialize application
- */
-function initializeApp() {
-    console.log('Initializing Stox! Live...');
+        try {
+            const [companyRes, aiRes, newsRes] = await Promise.all([
+                fetchJSON(`/api/company/${symbol}`),
+                fetchJSON(`/api/analyze/${symbol}`),
+                fetchJSON(`/api/news/${symbol}`)
+            ]);
 
-    // Setup event listeners
-    setupSearchListeners();
-    setupModalListeners();
+            if (companyRes.error) throw new Error(companyRes.error);
 
-    // Setup button event listeners
-    elements.favoritesBtn?.addEventListener('click', () => {
-        showNotification('Favorites feature coming soon!', 'info');
-    });
+            renderHeaderMeta(companyRes);
+            renderTradingViewWidgets(companyRes.symbol, companyRes.exchange);
+            renderAIData(aiRes);
+            renderNewsData(newsRes);
 
-    elements.settingsBtn?.addEventListener('click', () => {
-        showNotification('Settings panel coming soon!', 'info');
-    });
+            hideElement(loadingSection);
+            showElement(dashboard);
 
-    // Load default asset
-    const defaultAsset = CONFIG.DEFAULT_ASSETS[0];
-    
-    // Mock asset object for initial load
-    const mockAsset = {
-        symbol: 'AAPL',
-        name: 'Apple Inc.',
-        type: 'stock',
-        tv_symbol: 'NASDAQ:AAPL',
-        data: {
-            current_price: 189.95,
-            high_52w: 199.62,
-            low_52w: 124.17,
-            pe_ratio: 31.5,
-            market_cap: '2.98T'
+        } catch (err) {
+            hideElement(loadingSection);
+            showMessage(`Error loading data: ${err.message}`, 'error');
         }
-    };
+    }
 
-    // Set initial asset in UI
-    elements.assetName.textContent = mockAsset.name;
-    elements.assetTicker.textContent = mockAsset.symbol;
-    currentAsset = mockAsset;
-    elements.searchInput.value = mockAsset.name;
+    function renderHeaderMeta(data) {
+        const symbolEl = document.getElementById('stockSymbol');
+        if (symbolEl) {
+            symbolEl.textContent = `${data.companyName} (${data.symbol})`;
+        }
+    }
 
-    // Initialize TradingView widgets
-    initializeTradingViewWidgets(mockAsset);
+    function renderTradingViewWidgets(symbol, exchange) {
+        let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
-    // Load initial news
-    loadNews(mockAsset.symbol);
+        // 1. Ticker Widget
+        const tickerContainer = document.getElementById('tradingview-ticker-container');
+        if (tickerContainer) {
+            tickerContainer.innerHTML = `
+                <iframe 
+                    src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=2&symboledit=0&saveimage=0&toolbarbg=f1f3f6&studies=[]&theme=dark&style=3&timezone=Etc%2FUTC" 
+                    style="width: 100%; height: 85px; border: none; background: transparent;" 
+                    allowtransparency="true" 
+                    scrolling="no">
+                </iframe>
+            `;
+        }
 
-    showNotification('Welcome to Stox! Live - Real-time Stock Analysis', 'info');
-}
+        // 2. Candlestick Chart Widget
+        const chartContainer = document.getElementById('tradingview-container');
+        if (chartContainer) {
+            chartContainer.innerHTML = `
+                <iframe 
+                    src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
+                    style="width: 100%; height: 100%; border: none;" 
+                    allowtransparency="true" 
+                    scrolling="no">
+                </iframe>
+            `;
+        }
 
-// ============================================
-// READY STATE HANDLING
-// ============================================
+        // 3. Financials & Fundamentals Widget
+        const fundContainer = document.getElementById('tradingview-fundamentals-container');
+        if (fundContainer) {
+            fundContainer.innerHTML = '';
+            const widgetDiv = document.createElement('div');
+            widgetDiv.className = "tradingview-widget-container";
+            widgetDiv.style.width = "100%";
+            widgetDiv.style.height = "100%";
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
-}
+            const innerWidget = document.createElement('div');
+            innerWidget.className = "tradingview-widget-container__widget";
+            widgetDiv.appendChild(innerWidget);
 
-// ============================================
-// EXPORT FOR EXTERNAL USE
-// ============================================
+            const script = document.createElement('script');
+            script.type = "text/javascript";
+            script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+                "symbol": fullTicker,
+                "colorTheme": "dark",
+                "isTransparent": false,
+                "largeChartUrl": "",
+                "displayMode": "regular",
+                "width": "100%",
+                "height": "460",
+                "locale": "en"
+            });
+            widgetDiv.appendChild(script);
+            fundContainer.appendChild(widgetDiv);
+        }
+    }
 
-window.StoxLive = {
-    selectAsset,
-    loadAsset,
-    analyzeWithAI,
-    showAnalysisDetails,
-    showNotification
-};
+    function renderAIData(ai) {
+        if (!ai || ai.error) return;
+
+        const aiSentimentEl = document.getElementById('aiSentiment');
+        if (aiSentimentEl) {
+            aiSentimentEl.textContent = ai.recommendation || "HOLD";
+            aiSentimentEl.className = `sentiment-badge ${(ai.recommendation || 'hold').toLowerCase()}`;
+        }
+
+        const confidenceEl = document.getElementById('aiConfidence');
+        if (confidenceEl) confidenceEl.textContent = `${ai.confidenceScore || 0}%`;
+
+        const summaryEl = document.getElementById('aiSummary');
+        if (summaryEl) summaryEl.textContent = ai.marketSummary || 'N/A';
+
+        const outlookEl = document.getElementById('aiOutlook');
+        if (outlookEl) outlookEl.textContent = ai.currentTrend || 'N/A';
+
+        if (ai.nextMove) {
+            const dirBadge = document.getElementById('predictedDirectionBadge');
+            if (dirBadge) {
+                dirBadge.textContent = ai.nextMove.predictedDirection || 'NEUTRAL';
+                dirBadge.className = `sentiment-badge ${(ai.nextMove.predictedDirection || 'neutral').toLowerCase()}`;
+            }
+
+            const targetPriceEl = document.getElementById('targetPrice');
+            if (targetPriceEl) targetPriceEl.textContent = ai.nextMove.targetPrice || '—';
+
+            const predictedRangeEl = document.getElementById('predictedRange');
+            if (predictedRangeEl) predictedRangeEl.textContent = ai.nextMove.predictedRange || '—';
+
+            const reasoningEl = document.getElementById('nextMoveReasoning');
+            if (reasoningEl) reasoningEl.textContent = ai.nextMove.reasoning || '';
+        }
+
+        const posEl = document.getElementById('positiveFactors');
+        if (posEl) {
+            posEl.innerHTML = (ai.keyStrengths || []).map(s => `<li>${s}</li>`).join('');
+        }
+
+        const riskFactorsEl = document.getElementById('riskFactors');
+        if (riskFactorsEl) {
+            riskFactorsEl.innerHTML = (ai.keyRisks || []).map(r => `<li>${r}</li>`).join('');
+        }
+    }
+
+    function renderNewsData(news) {
+        const newsListEl = document.getElementById('newsList');
+        if (!newsListEl) return;
+        if (!news.articles || news.articles.length === 0) {
+            newsListEl.innerHTML = '<p class="yf-muted">No news updates available.</p>';
+            return;
+        }
+
+        newsListEl.innerHTML = news.articles.map(art => `
+            <div class="news-item">
+                <a href="${art.link}" target="_blank">${art.title}</a>
+                <p class="yf-muted" style="font-size:0.78rem; margin-top:0.2rem;">Source: ${art.publisher}</p>
+            </div>
+        `).join('');
+    }
+
+    function showElement(el) { if (el) el.classList.remove('hidden'); }
+    function hideElement(el) { if (el) el.classList.add('hidden'); }
+
+    function showMessage(msg, type = 'info') {
+        if (!messageBox) return;
+        messageBox.textContent = msg;
+        messageBox.className = `yf-alert ${type}`;
+        showElement(messageBox);
+    }
+});
