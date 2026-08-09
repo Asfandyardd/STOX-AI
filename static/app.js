@@ -6,8 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const dashboard = document.getElementById('dashboard');
     const messageBox = document.getElementById('messageBox');
 
-    let livePulseInterval = null;
-
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -30,8 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showElement(loadingSection);
         hideElement(dashboard);
 
-        if (livePulseInterval) clearInterval(livePulseInterval);
-
         try {
             const [companyRes, aiRes, newsRes] = await Promise.all([
                 fetchJSON(`/api/company/${symbol}`),
@@ -41,16 +37,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (companyRes.error) throw new Error(companyRes.error);
 
-            renderCompanyData(companyRes);
-            renderTradingViewWidget(companyRes.symbol, companyRes.exchange);
+            renderCompanyStats(companyRes);
+            renderTradingViewWidgets(companyRes.symbol, companyRes.exchange);
             renderAIData(aiRes);
             renderNewsData(newsRes);
 
             hideElement(loadingSection);
             showElement(dashboard);
-
-            // Simulate real-time ticker pulsing effect
-            startLiveTickSim(companyRes.currentPrice);
 
         } catch (err) {
             hideElement(loadingSection);
@@ -58,38 +51,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderCompanyData(data) {
+    function renderCompanyStats(data) {
         document.getElementById('stockSymbol').textContent = `${data.companyName} (${data.symbol})`;
-        document.getElementById('currentPrice').textContent = `$${Number(data.currentPrice || 0).toFixed(2)}`;
-
-        const diff = data.currentPrice - data.previousClose;
-        const pct = data.previousClose ? ((diff / data.previousClose) * 100).toFixed(2) : '0.00';
-        const sign = diff >= 0 ? '+' : '';
-
-        const priceChangeEl = document.getElementById('priceChange');
-        priceChangeEl.textContent = `${sign}$${diff.toFixed(2)} (${sign}${pct}%)`;
-        priceChangeEl.className = `price-change ${diff >= 0 ? 'up' : 'down'}`;
-
         document.getElementById('previousClose').textContent = `$${Number(data.previousClose || 0).toFixed(2)}`;
         document.getElementById('dayRange').textContent = `$${Number(data.low || 0).toFixed(2)} - $${Number(data.high || 0).toFixed(2)}`;
         document.getElementById('volume').textContent = Number(data.volume || 0).toLocaleString();
         document.getElementById('range52').textContent = `$${Number(data.fiftyTwoWeekLow || 0).toFixed(2)} - $${Number(data.fiftyTwoWeekHigh || 0).toFixed(2)}`;
     }
 
-    function renderTradingViewWidget(symbol, exchange) {
-        const container = document.getElementById('tradingview-container');
-        if (!container) return;
-
+    function renderTradingViewWidgets(symbol, exchange) {
         let fullTicker = exchange && exchange.includes(':') ? exchange : `NASDAQ:${symbol}`;
 
-        container.innerHTML = `
-            <iframe 
-                src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
-                style="width: 100%; height: 100%; border: none;" 
-                allowtransparency="true" 
-                scrolling="no">
-            </iframe>
-        `;
+        // 1. Render TradingView Single Ticker Widget on the upper right to match chart prices precisely
+        const tickerContainer = document.getElementById('tradingview-ticker-container');
+        if (tickerContainer) {
+            tickerContainer.innerHTML = `
+                <div class="tradingview-widget-container" style="width: 100%; height: 100%;">
+                  <div class="tradingview-widget-container__widget" style="width:100%; height:100%;"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                  {
+                    "symbol": "${fullTicker}",
+                    "width": "100%",
+                    "colorTheme": "dark",
+                    "isTransparent": true,
+                    "locale": "en"
+                  }
+                  </script>
+                </div>
+            `;
+        }
+
+        // 2. Render Main Candlestick Chart Widget
+        const chartContainer = document.getElementById('tradingview-container');
+        if (chartContainer) {
+            chartContainer.innerHTML = `
+                <iframe 
+                    src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(fullTicker)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC" 
+                    style="width: 100%; height: 100%; border: none;" 
+                    allowtransparency="true" 
+                    scrolling="no">
+                </iframe>
+            `;
+        }
     }
 
     function renderAIData(ai) {
@@ -131,24 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="yf-muted" style="font-size:0.78rem; margin-top:0.2rem;">Source: ${art.publisher}</p>
             </div>
         `).join('');
-    }
-
-    function startLiveTickSim(basePrice) {
-        let current = basePrice;
-        livePulseInterval = setInterval(() => {
-            const delta = (Math.random() - 0.49) * (basePrice * 0.001);
-            current += delta;
-            
-            const priceEl = document.getElementById('currentPrice');
-            const pulseEl = document.getElementById('livePulse');
-
-            if (priceEl) {
-                priceEl.textContent = `$${current.toFixed(2)}`;
-                if (pulseEl) {
-                    pulseEl.style.backgroundColor = delta >= 0 ? 'var(--yf-green)' : 'var(--yf-red)';
-                }
-            }
-        }, 3000);
     }
 
     function showElement(el) { if (el) el.classList.remove('hidden'); }
