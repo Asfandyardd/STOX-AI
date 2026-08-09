@@ -14,8 +14,6 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
-# Comprehensive Asset Registry mapping Yahoo Finance data sources 
-# to their exact TradingView exchange tickers to ensure 100% price synchronization.
 ASSET_REGISTRY = {
     # --- Cryptocurrencies ---
     "BTC": {"yf": "BTC-USD", "tv": "BINANCE:BTCUSDT", "name": "Bitcoin USD"},
@@ -23,45 +21,18 @@ ASSET_REGISTRY = {
     "SOL": {"yf": "SOL-USD", "tv": "BINANCE:SOLUSDT", "name": "Solana USD"},
     "XRP": {"yf": "XRP-USD", "tv": "BINANCE:XRPUSDT", "name": "XRP USD"},
     "DOGE": {"yf": "DOGE-USD", "tv": "BINANCE:DOGEUSDT", "name": "Dogecoin USD"},
-    "ADA": {"yf": "ADA-USD", "tv": "BINANCE:ADAUSDT", "name": "Cardano USD"},
-    "AVAX": {"yf": "AVAX-USD", "tv": "BINANCE:AVAXUSDT", "name": "Avalanche USD"},
-    "DOT": {"yf": "DOT-USD", "tv": "BINANCE:DOTUSDT", "name": "Polkadot USD"},
-    "LINK": {"yf": "LINK-USD", "tv": "BINANCE:LINKUSDT", "name": "Chainlink USD"},
-    "MATIC": {"yf": "MATIC-USD", "tv": "BINANCE:MATICUSDT", "name": "Polygon USD"},
-    "UNI": {"yf": "UNI-USD", "tv": "BINANCE:UNIUSDT", "name": "Uniswap USD"},
-    "LTC": {"yf": "LTC-USD", "tv": "BINANCE:LTCUSDT", "name": "Litecoin USD"},
-    "BCH": {"yf": "BCH-USD", "tv": "BINANCE:BCHUSDT", "name": "Bitcoin Cash USD"},
-    "ATOM": {"yf": "ATOM-USD", "tv": "BINANCE:ATOMUSDT", "name": "Cosmos USD"},
-    "XLM": {"yf": "XLM-USD", "tv": "BINANCE:XLMUSDT", "name": "Stellar USD"},
 
     # --- Commodities & Precious Metals ---
     "GOLD": {"yf": "GC=F", "tv": "TVC:GOLD", "name": "Gold Futures"},
     "GC": {"yf": "GC=F", "tv": "TVC:GOLD", "name": "Gold Futures"},
     "SILVER": {"yf": "SI=F", "tv": "TVC:SILVER", "name": "Silver Futures"},
-    "SI": {"yf": "SI=F", "tv": "TVC:SILVER", "name": "Silver Futures"},
     "OIL": {"yf": "CL=F", "tv": "TVC:USOIL", "name": "Crude Oil WTI"},
-    "USOIL": {"yf": "CL=F", "tv": "TVC:USOIL", "name": "Crude Oil WTI"},
     "CL": {"yf": "CL=F", "tv": "NYMEX:CL1!", "name": "Crude Oil Futures"},
-    "BRENT": {"yf": "BZ=F", "tv": "TVC:UKOIL", "name": "Brent Crude Oil"},
-    "NATGAS": {"yf": "NG=F", "tv": "NYMEX:NG1!", "name": "Natural Gas Futures"},
-    "COPPER": {"yf": "HG=F", "tv": "COMEX:HG1!", "name": "Copper Futures"},
-    "CORN": {"yf": "ZC=F", "tv": "CBOT:ZC1!", "name": "Corn Futures"},
-    "WHEAT": {"yf": "ZW=F", "tv": "CBOT:ZW1!", "name": "Wheat Futures"},
-    "SOYBEAN": {"yf": "ZS=F", "tv": "CBOT:ZS1!", "name": "Soybean Futures"},
-    "COFFEE": {"yf": "KC=F", "tv": "ICEUS:KC1!", "name": "Coffee Futures"},
-    "SUGAR": {"yf": "SB=F", "tv": "ICEUS:SB1!", "name": "Sugar Futures"},
 
     # --- Forex Exchange Rates ---
     "EURUSD": {"yf": "EURUSD=X", "tv": "FX_IDC:EURUSD", "name": "Euro / US Dollar"},
     "GBPUSD": {"yf": "GBPUSD=X", "tv": "FX_IDC:GBPUSD", "name": "British Pound / US Dollar"},
     "USDJPY": {"yf": "USDJPY=X", "tv": "FX_IDC:USDJPY", "name": "US Dollar / Japanese Yen"},
-    "AUDUSD": {"yf": "AUDUSD=X", "tv": "FX_IDC:AUDUSD", "name": "Australian Dollar / US Dollar"},
-    "USDCAD": {"yf": "USDCAD=X", "tv": "FX_IDC:USDCAD", "name": "US Dollar / Canadian Dollar"},
-    "USDCHF": {"yf": "USDCHF=X", "tv": "FX_IDC:USDCHF", "name": "US Dollar / Swiss Franc"},
-    "NZDUSD": {"yf": "NZDUSD=X", "tv": "FX_IDC:NZDUSD", "name": "New Zealand Dollar / US Dollar"},
-    "EURGBP": {"yf": "EURGBP=X", "tv": "FX_IDC:EURGBP", "name": "Euro / British Pound"},
-    "EURJPY": {"yf": "EURJPY=X", "tv": "FX_IDC:EURJPY", "name": "Euro / Japanese Yen"},
-    "GBPJPY": {"yf": "GBPJPY=X", "tv": "FX_IDC:GBPJPY", "name": "British Pound / Japanese Yen"},
 
     # --- Top Tech & Major Equities ---
     "AAPL": {"yf": "AAPL", "tv": "NASDAQ:AAPL", "name": "Apple Inc."},
@@ -70,34 +41,12 @@ ASSET_REGISTRY = {
     "MSFT": {"yf": "MSFT", "tv": "NASDAQ:MSFT", "name": "Microsoft Corporation"},
     "AMZN": {"yf": "AMZN", "tv": "NASDAQ:AMZN", "name": "Amazon.com Inc."},
     "GOOGL": {"yf": "GOOGL", "tv": "NASDAQ:GOOGL", "name": "Alphabet Inc. (Class A)"},
-    "GOOG": {"yf": "GOOG", "tv": "NASDAQ:GOOG", "name": "Alphabet Inc. (Class C)"},
-    "META": {"yf": "META", "tv": "NASDAQ:META", "name": "Meta Platforms Inc."},
-    "NFLX": {"yf": "NFLX", "tv": "NASDAQ:NFLX", "name": "Netflix Inc."},
-    "AMD": {"yf": "AMD", "tv": "NASDAQ:AMD", "name": "Advanced Micro Devices"},
-    "INTC": {"yf": "INTC", "tv": "NASDAQ:INTC", "name": "Intel Corporation"},
-    "QCOM": {"yf": "QCOM", "tv": "NASDAQ:QCOM", "name": "QUALCOMM Incorporated"},
-    "AVGO": {"yf": "AVGO", "tv": "NASDAQ:AVGO", "name": "Broadcom Inc."},
-    "JPM": {"yf": "JPM", "tv": "NYSE:JPM", "name": "JPMorgan Chase & Co."},
-    "BAC": {"yf": "BAC", "tv": "NYSE:BAC", "name": "Bank of America Corp."},
-    "WFC": {"yf": "WFC", "tv": "NYSE:WFC", "name": "Wells Fargo & Company"},
-    "GS": {"yf": "GS", "tv": "NYSE:GS", "name": "Goldman Sachs Group Inc."},
-    "MS": {"yf": "MS", "tv": "NYSE:MS", "name": "Morgan Stanley"},
-    "V": {"yf": "V", "tv": "NYSE:V", "name": "Visa Inc."},
-    "MA": {"yf": "MA", "tv": "NYSE:MA", "name": "Mastercard Incorporated"},
-    "JNJ": {"yf": "JNJ", "tv": "NYSE:JNJ", "name": "Johnson & Johnson"},
-    "UNH": {"yf": "UNH", "tv": "NYSE:UNH", "name": "UnitedHealth Group Inc."},
-    "LLY": {"yf": "LLY", "tv": "NYSE:LLY", "name": "Eli Lilly and Company"},
-    "WMT": {"yf": "WMT", "tv": "NYSE:WMT", "name": "Walmart Inc."},
-    "PG": {"yf": "PG", "tv": "NYSE:PG", "name": "Procter & Gamble Company"},
-    "COST": {"yf": "COST", "tv": "NASDAQ:COST", "name": "Costco Wholesale Corporation"},
-    "XOM": {"yf": "XOM", "tv": "NYSE:XOM", "name": "Exxon Mobil Corporation"},
-    "CVX": {"yf": "CVX", "tv": "NYSE:CVX", "name": "Chevron Corporation"}
+    "META": {"yf": "META", "tv": "NASDAQ:META", "name": "Meta Platforms Inc."}
 }
 
 def get_live_market_data(symbol):
     clean_symbol = symbol.strip().upper()
     
-    # Lookup in registry or construct generic fallback mappings dynamically
     if clean_symbol in ASSET_REGISTRY:
         target_yf = ASSET_REGISTRY[clean_symbol]["yf"]
         target_tv = ASSET_REGISTRY[clean_symbol]["tv"]
@@ -109,11 +58,10 @@ def get_live_market_data(symbol):
 
     try:
         ticker_obj = yf.Ticker(target_yf)
-        # Fetch intraday pre/post market enabled rows to line up cleanly with charts
         todays_data = ticker_obj.history(period="2d", interval="1m", prepost=True)
         
         if todays_data.empty:
-            todays_data = ticker_obj.history(period="5s", prepost=True)
+            todays_data = ticker_obj.history(period="5d", prepost=True)
             
         if not todays_data.empty:
             current_price = float(todays_data['Close'].iloc[-1])
@@ -142,7 +90,6 @@ def get_live_market_data(symbol):
     except Exception as e:
         print(f"Fetch warning for {clean_symbol} ({target_yf}): {e}")
 
-    # Safe Fallback
     base_price = 150.00
     return {
         "symbol": clean_symbol,
