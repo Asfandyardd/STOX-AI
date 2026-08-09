@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stox! LIVE</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.1">
 </head>
 <body>
     <div class="yf-wrapper">
@@ -44,8 +44,8 @@
                     <h1 id="stockSymbol">Company Name (TICKER)</h1>
                     <p id="tradingDate" class="yf-muted">TradingView Real-Time Feed ($USD)</p>
                 </div>
-                <!-- Dynamic TradingView Single Ticker Widget Container to match chart precisely -->
-                <div id="tradingview-ticker-container" style="min-width: 220px; height: 75px;">
+                <!-- Dynamic TradingView Single Ticker Widget Container -->
+                <div id="tradingview-ticker-container" style="min-width: 240px; height: 75px;">
                     <!-- Injected dynamically via app.js -->
                 </div>
             </section>
@@ -141,6 +141,6 @@
         </main>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=3.1"></script>
 </body>
 </html>
