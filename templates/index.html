@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stox! LIVE</title>
+    <!-- TradingView Core Library -->
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=6.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=7.0">
 </head>
 <body>
     <div class="yf-wrapper">
@@ -15,7 +16,7 @@
                 <span class="yf-logo">Stox! <span>Live</span></span>
             </div>
             <form id="searchForm" class="yf-search-box">
-                <input type="text" id="searchInput" placeholder="Search symbols (e.g. BTC, ETH, AAPL, GOLD, OIL)..." required />
+                <input type="text" id="searchInput" placeholder="Search symbols (e.g. BTC, ETH, AAPL, MSFT, GOOGL)..." required />
                 <button type="submit">Search</button>
             </form>
             <div class="market-status">
@@ -35,7 +36,7 @@
 
         <div id="loadingSection" class="yf-loading hidden">
             <div class="yf-spinner"></div>
-            <p>Fetching real-time market data & Groq AI insights...</p>
+            <p>Loading real-time TradingView charts and market feeds...</p>
         </div>
 
         <!-- Main Dashboard -->
@@ -79,66 +80,75 @@
 
                 <!-- AI Analysis Side Panel -->
                 <aside class="sidebar-column">
-                    <!-- TEXT-BASED LIVE STOCK VALUE PLACED RIGHT ABOVE AI ANALYSIS -->
-                    <article class="yf-card" style="padding: 16px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03);">
-                        <div>
-                            <span style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 4px;">Live Market Value</span>
-                            <strong id="liveStockValue" style="font-size: 22px; color: var(--text-main);">$0.00</strong>
+                    <!-- OFFICIAL TRADINGVIEW SINGLE QUOTE WIDGET (LIVE MARKET VALUE) -->
+                    <article class="yf-card" style="padding: 14px; margin-bottom: 15px;">
+                        <div class="card-header" style="margin-bottom: 6px;">
+                            <h3 style="font-size: 13px; color: var(--text-muted);">TradingView Live Quote</h3>
                         </div>
-                        <span id="livePriceChange" class="sentiment-badge buy" style="font-size: 12px;">Live</span>
+                        <div id="tradingview-quote-container" style="width: 100%; height: 90px;"></div>
                     </article>
 
+                    <!-- PROFESSIONAL MANUAL AI TRIGGER BUTTON -->
                     <article class="yf-card ai-card">
                         <div class="card-header">
                             <h2>Groq AI Analytics</h2>
-                            <span id="aiSentiment" class="sentiment-badge buy">BUY</span>
+                            <span id="aiSentiment" class="sentiment-badge neutral">READY</span>
                         </div>
 
-                        <div class="confidence-box">
-                            <span>AI Confidence Score</span>
-                            <strong id="aiConfidence">0%</strong>
+                        <div id="aiPromptState" style="padding: 20px 0; text-align: center;">
+                            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;">Chart loaded successfully. Click below to scan the active feed and generate live insights.</p>
+                            <button id="runAiBtn" style="background: var(--accent-blue, #2962ff); color: white; border: none; padding: 12px 24px; font-weight: 600; border-radius: 6px; cursor: pointer; width: 100%; font-size: 15px; transition: opacity 0.2s;">
+                                🚀 Run Groq AI Analysis
+                            </button>
                         </div>
 
-                        <div class="ai-section">
-                            <h3>Market Executive Summary</h3>
-                            <p id="aiSummary">Loading AI analysis...</p>
-                        </div>
-
-                        <div class="next-move-box">
-                            <div class="next-move-header">
-                                <strong>🎯 AI Target & Next Move</strong>
-                                <span id="predictedDirectionBadge" class="sentiment-badge neutral">NEUTRAL</span>
+                        <div id="aiResultsContainer" class="hidden">
+                            <div class="confidence-box">
+                                <span>AI Confidence Score</span>
+                                <strong id="aiConfidence">0%</strong>
                             </div>
-                            <div class="next-move-details">
-                                <div><span>Target Price:</span> <strong id="targetPrice" class="accent">—</strong></div>
-                                <div><span>Expected Range:</span> <strong id="predictedRange">—</strong></div>
+
+                            <div class="ai-section">
+                                <h3>Market Executive Summary</h3>
+                                <p id="aiSummary">Awaiting analysis...</p>
                             </div>
-                            <p id="nextMoveReasoning"></p>
+
+                            <div class="next-move-box">
+                                <div class="next-move-header">
+                                    <strong>🎯 AI Target & Next Move</strong>
+                                    <span id="predictedDirectionBadge" class="sentiment-badge neutral">NEUTRAL</span>
+                                </div>
+                                <div class="next-move-details">
+                                    <div><span>Target Price:</span> <strong id="targetPrice" class="accent">—</strong></div>
+                                    <div><span>Expected Range:</span> <strong id="predictedRange">—</strong></div>
+                                </div>
+                                <p id="nextMoveReasoning"></p>
+                            </div>
+
+                            <div class="ai-section">
+                                `<h3>Technical Outlook</h3>`
+                                <p id="aiOutlook">Awaiting analysis...</p>
+                            </div>
+
+                            <div class="ai-factors">
+                                <div class="factor-group positive">
+                                    <h4>Key Strengths</h4>
+                                    <ul id="positiveFactors"></ul>
+                                </div>
+                                <div class="factor-group negative">
+                                    <h4>Risk Factors</h4>
+                                    <ul id="riskFactors"></ul>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="ai-section">
-                            <h3>Technical Outlook</h3>
-                            <p id="aiOutlook">Loading...</p>
-                        </div>
-
-                        <div class="ai-factors">
-                            <div class="factor-group positive">
-                                <h4>Key Strengths</h4>
-                                <ul id="positiveFactors"></ul>
-                            </div>
-                            <div class="factor-group negative">
-                                <h4>Risk Factors</h4>
-                                <ul id="riskFactors"></ul>
-                            </div>
-                        </div>
-
-                        <p class="ai-source">Powered by Groq AI (Llama-3.3-70b)</p>
+                        <p class="ai-source" style="margin-top: 15px;">Powered by Groq AI (Llama-3.3-70b)</p>
                     </article>
                 </aside>
             </div>
         </main>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=6.0"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=7.0"></script>
 </body>
 </html>
