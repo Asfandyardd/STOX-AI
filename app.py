@@ -118,16 +118,13 @@ def analyze_stock(symbol):
         if live_price_override:
             try:
                 latest_close = float(live_price_override)
-                day_high = max(data["high"], latest_close * 1.01)
-                day_low = min(data["low"], latest_close * 0.99)
             except:
                 latest_close = data["currentPrice"]
-                day_high = data["high"]
-                day_low = data["low"]
         else:
             latest_close = data["currentPrice"]
-            day_high = data["high"]
-            day_low = data["low"]
+
+        day_high = max(data["high"], latest_close * 1.015)
+        day_low = min(data["low"], latest_close * 0.985)
 
         asset_name = data["companyName"]
         exchange_param = data["exchange"]
