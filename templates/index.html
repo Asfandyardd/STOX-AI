@@ -3,156 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Stox!Live - Stock Market Live, Quote, Business & Finance News</title>
+    <title>Stox!Live - Stock Market Live, Quote, Business & Finance News</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <!-- Custom Yahoo Finance Dark Styling -->
-    <style>
-        :root {
-            --yf-bg: #181b20;
-            --yf-card-bg: #232731;
-            --yf-border: #2f3542;
-            --yf-purple: #6001d2;
-            --yf-purple-hover: #7b1cd8;
-            --yf-text: #ffffff;
-            --yf-text-muted: #959ea6;
-            --yf-green: #00b09b;
-            --yf-red: #ff3333;
-        }
-
-        body {
-            background-color: var(--yf-bg);
-            color: var(--yf-text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        /* Navbar & Header */
-        .navbar-yf {
-            background-color: var(--yf-card-bg);
-            border-bottom: 1px solid var(--yf-border);
-            padding: 10px 20px;
-        }
-
-        .navbar-brand {
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            font-size: 1.5rem;
-            color: #fff !important;
-        }
-
-        .navbar-brand span {
-            color: var(--yf-purple);
-        }
-
-        .search-box .form-control {
-            background-color: var(--yf-bg);
-            border: 1px solid var(--yf-border);
-            color: #fff;
-            border-radius: 20px 0 0 20px;
-            padding-left: 20px;
-        }
-
-        .search-box .form-control:focus {
-            background-color: var(--yf-bg);
-            border-color: var(--yf-purple);
-            color: #fff;
-            box-shadow: none;
-        }
-
-        .search-box .btn {
-            background-color: var(--yf-purple);
-            border: 1px solid var(--yf-purple);
-            color: #fff;
-            border-radius: 0 20px 20px 0;
-            padding: 0 20px;
-        }
-
-        .search-box .btn:hover {
-            background-color: var(--yf-purple-hover);
-        }
-
-        /* Asset Quick Ticker Bar */
-        .ticker-bar {
-            background-color: #1e222d;
-            border-bottom: 1px solid var(--yf-border);
-            padding: 8px 0;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-
-        .asset-chip {
-            background-color: var(--yf-card-bg);
-            border: 1px solid var(--yf-border);
-            color: var(--yf-text);
-            border-radius: 16px;
-            padding: 4px 14px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-right: 8px;
-            cursor: pointer;
-            display: inline-block;
-            transition: all 0.2s;
-        }
-
-        .asset-chip:hover {
-            border-color: var(--yf-purple);
-            background-color: #2a2f3d;
-        }
-
-        /* Main Content Grid & Cards */
-        .yf-card {
-            background-color: var(--yf-card-bg);
-            border: 1px solid var(--yf-border);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        /* Asset Header Banner */
-        .asset-header-logo {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: contain;
-            background: #fff;
-            padding: 4px;
-        }
-
-        /* TradingView Chart Container */
-        #tradingview-widget-container {
-            width: 100%;
-            height: 500px;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid var(--yf-border);
-        }
-
-        /* AI Analyzer Styles */
-        .ai-header {
-            border-bottom: 1px solid var(--yf-border);
-            padding-bottom: 12px;
-            margin-bottom: 15px;
-        }
-
-        .text-success { color: var(--yf-green) !important; }
-        .text-danger { color: var(--yf-red) !important; }
-        .text-muted { color: var(--yf-text-muted) !important; }
-
-        /* Scrollbar Styling */
-        ::-webkit-scrollbar {
-            height: 6px;
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: var(--yf-bg);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--yf-border);
-            border-radius: 3px;
-        }
-    </style>
+    <!-- Custom External CSS Styling -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
@@ -160,7 +17,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark navbar-yf sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <i class="bi bi-graph-up-arrow text-purple me-2" style="color: var(--yf-purple);"></i> YAHOO! <span>FINANCE AI</span>
+                <i class="bi bi-graph-up-arrow me-2" style="color: var(--yf-purple);"></i> STOX! <span>LIVE AI</span>
             </a>
             
             <div class="mx-auto col-md-6 col-lg-5">
