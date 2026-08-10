@@ -12,8 +12,8 @@ def index():
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
-        # Prompt Groq Llama 3.3 for technical analysis text based on the TradingView symbol
-        prompt = f"Provide a concise professional stock market analysis, key strengths, risks, and a short-term outlook prediction (Bullish/Bearish/Hold) for {symbol}."
+        # Prompt Groq Llama 3.3 for professional market insights without speculative pricing hallucination
+        prompt = f"Provide a brief technical market outlook, key strengths, and risks for the stock/crypto symbol {symbol}. Keep it concise and professional without generating speculative target prices."
         
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
@@ -25,8 +25,8 @@ def analyze_stock(symbol):
         formatted_html = f"""
             <div class="p-2">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="badge bg-warning text-dark">SIGNAL ACTIVE</span>
-                    <span class="text-muted small">Symbol: {symbol}</span>
+                    <span class="badge bg-success text-dark">AI MODEL ACTIVE</span>
+                    <span class="text-muted small">Asset: {symbol}</span>
                 </div>
                 <p class="small text-light" style="line-height: 1.5; max-height: 320px; overflow-y: auto;">
                     {analysis_text.replace('\n', '<br>')}
