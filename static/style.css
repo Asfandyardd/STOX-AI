@@ -72,6 +72,11 @@ body {
     padding: 8px 0;
     overflow-x: auto;
     white-space: nowrap;
+    scrollbar-width: none; /* Firefox */
+}
+
+.ticker-bar::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
 }
 
 .asset-chip {
@@ -143,4 +148,33 @@ body {
 ::-webkit-scrollbar-thumb {
     background: var(--yf-border);
     border-radius: 3px;
+}
+
+/* ==========================================
+   MOBILE RESPONSIVE FIXES
+   ========================================== */
+@media (max-width: 991.98px) {
+    #tradingview-widget-container {
+        height: 400px !important;
+    }
+    
+    .yf-card.h-100 {
+        min-height: 450px;
+    }
+
+    .container-fluid {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .search-box {
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+    
+    #tradingview-widget-container {
+        height: 350px !important;
+    }
 }
