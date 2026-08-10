@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <!-- Custom External CSS Styling -->
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -22,13 +22,13 @@
             
             <div class="mx-auto col-md-6 col-lg-5">
                 <form id="search-form" class="input-group search-box">
-                    <input type="text" id="search-input" class="form-control" placeholder="Search symbol or company (e.g. AAPL, TSLA, BTC)..." autocomplete="off">
+                    <input type="text" id="search-input" class="form-control" placeholder="Search symbol (e.g. AAPL, TSLA, BTCUSD)..." autocomplete="off">
                     <button class="btn" type="submit"><i class="bi bi-search"></i></button>
                 </form>
             </div>
 
             <div class="d-none d-lg-block text-muted small">
-                <i class="bi bi-shield-check text-success"></i> Groq Llama 3.3 Engine Live
+                <i class="bi bi-shield-check text-success"></i> TradingView Engine Live
             </div>
         </div>
     </nav>
@@ -39,60 +39,33 @@
             <span class="asset-chip" data-symbol="AAPL">AAPL</span>
             <span class="asset-chip" data-symbol="TSLA">TSLA</span>
             <span class="asset-chip" data-symbol="NVDA">NVDA</span>
-            <span class="asset-chip" data-symbol="BTC">BTC-USD</span>
-            <span class="asset-chip" data-symbol="ETH">ETH-USD</span>
-            <span class="asset-chip" data-symbol="SOL">SOL-USD</span>
+            <span class="asset-chip" data-symbol="BTCUSD">BTCUSD</span>
+            <span class="asset-chip" data-symbol="ETHUSD">ETHUSD</span>
+            <span class="asset-chip" data-symbol="SOLUSD">SOLUSD</span>
             <span class="asset-chip" data-symbol="MSFT">MSFT</span>
             <span class="asset-chip" data-symbol="AMZN">AMZN</span>
             <span class="asset-chip" data-symbol="GOOGL">GOOGL</span>
             <span class="asset-chip" data-symbol="META">META</span>
-            <span class="asset-chip" data-symbol="GOLD">GOLD</span>
-            <span class="asset-chip" data-symbol="OIL">OIL</span>
         </div>
     </div>
 
     <!-- Main Dashboard Body -->
     <div class="container-fluid py-4">
         
-        <!-- Asset Title & Live Metrics Header -->
-        <div class="yf-card mb-4">
-            <div class="row align-items-center">
-                <div class="col-md-7 d-flex align-items-center">
-                    <img id="asset-logo" src="" alt="Logo" class="asset-header-logo me-3">
-                    <div>
-                        <div class="d-flex align-items-center">
-                            <h2 id="asset-name" class="mb-0 fw-bold me-2 text-white">Loading...</h2>
-                            <span id="asset-symbol" class="badge bg-secondary">...</span>
-                        </div>
-                        <p class="text-muted small mb-0">Real-time Feed & Technical Data synchronized via TradingView & Yahoo Finance</p>
-                    </div>
-                </div>
-                <div class="col-md-5 text-md-end mt-3 mt-md-0">
-                    <div id="live-price" class="fs-2 fw-bold text-white">$0.00</div>
-                    <div id="price-change" class="fw-bold small">0.00 (0.00%)</div>
-                </div>
-            </div>
-            
-            <hr style="border-color: var(--yf-border);" class="my-3">
-
-            <div class="row text-muted small">
-                <div class="col-6 col-md-3">Session High: <strong id="session-high" class="text-light">$0.00</strong></div>
-                <div class="col-6 col-md-3">Session Low: <strong id="session-low" class="text-light">$0.00</strong></div>
-                <div class="col-6 col-md-3 mt-2 mt-md-0">Exchange: <strong class="text-light">Connected</strong></div>
-                <div class="col-6 col-md-3 mt-2 mt-md-0">Status: <strong class="text-success">Live & Streaming</strong></div>
-            </div>
+        <!-- TradingView Symbol Info Live Header Widget -->
+        <div class="yf-card mb-4 p-2">
+            <div id="tradingview-symbol-info-container"></div>
         </div>
 
         <!-- Charts & AI Analyzer Grid -->
         <div class="row">
-            <!-- Left Column: TradingView Chart -->
+            <!-- Left Column: TradingView Interactive Chart -->
             <div class="col-lg-8 mb-4 mb-lg-0">
                 <div class="yf-card h-100 mb-0">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="fw-bold mb-0 text-white"><i class="bi bi-graph-up me-2 text-purple" style="color: var(--yf-purple);"></i>Interactive Live Chart</h5>
                         <span class="badge bg-dark border border-secondary">TradingView Feed</span>
                     </div>
-                    <!-- TradingView Widget Embed Container -->
                     <div id="tradingview-widget-container"></div>
                 </div>
             </div>
@@ -106,10 +79,9 @@
                     </div>
                     
                     <div id="ai-analysis-content" class="flex-grow-1">
-                        <!-- Dynamic AI Content Loaded via app.js -->
                         <div class="text-center py-5">
                             <div class="spinner-border text-info" role="status"></div>
-                            <p class="mt-2 text-muted small">Analyzing live charts & price action...</p>
+                            <p class="mt-2 text-muted small">Analyzing TradingView live feed...</p>
                         </div>
                     </div>
                 </div>
