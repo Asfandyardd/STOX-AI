@@ -1,203 +1,41 @@
+from flask import Flask, render_template, jsonify
 import os
-import json
-from flask import Flask, render_template, jsonify, request
 from groq import Groq
-from dotenv import load_dotenv
-import yfinance as yf
-
-load_dotenv()
 
 app = Flask(__name__)
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-
-groq_api_key = os.getenv("GROQ_API_KEY")
-groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
-
-ASSET_REGISTRY = {
-    "BTC": {"yf": "BTC-USD", "tv": "BINANCE:BTCUSDT", "name": "Bitcoin USD", "logo": "https://assets.coingecko.com/coins/images/1/large/bitcoin.png"},
-    "ETH": {"yf": "ETH-USD", "tv": "BINANCE:ETHUSDT", "name": "Ethereum USD", "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png"},
-    "SOL": {"yf": "SOL-USD", "tv": "BINANCE:SOLUSDT", "name": "Solana USD", "logo": "https://assets.coingecko.com/coins/images/4128/large/solana.png"},
-    "XRP": {"yf": "XRP-USD", "tv": "BINANCE:XRPUSDT", "name": "XRP USD", "logo": "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png"},
-    "DOGE": {"yf": "DOGE-USD", "tv": "BINANCE:DOGEUSDT", "name": "Dogecoin USD", "logo": "https://assets.coingecko.com/coins/images/5/large/dogecoin.png"},
-    "GOLD": {"yf": "GC=F", "tv": "TVC:GOLD", "name": "Gold Futures", "logo": "https://images.vexels.com/media/users/3/142718/isolated/preview/102c77d46c82779fa69911e3b6a9c9f0-gold-bars-icon-by-vexels.png"},
-    "OIL": {"yf": "CL=F", "tv": "NYMEX:CL1!", "name": "Crude Oil Futures", "logo": "https://cdn-icons-png.flaticon.com/512/2933/2933458.png"},
-    "SILVER": {"yf": "SI=F", "tv": "TVC:SILVER", "name": "Silver Futures", "logo": "https://cdn-icons-png.flaticon.com/512/2933/2933464.png"},
-    "AAPL": {"yf": "AAPL", "tv": "NASDAQ:AAPL", "name": "Apple Inc.", "logo": "https://logo.clearbit.com/apple.com"},
-    "TSLA": {"yf": "TSLA", "tv": "NASDAQ:TSLA", "name": "Tesla Inc.", "logo": "https://logo.clearbit.com/tesla.com"},
-    "NVDA": {"yf": "NVDA", "tv": "NASDAQ:NVDA", "name": "NVIDIA Corporation", "logo": "https://logo.clearbit.com/nvidia.com"},
-    "MSFT": {"yf": "MSFT", "tv": "NASDAQ:MSFT", "name": "Microsoft Corporation", "logo": "https://logo.clearbit.com/microsoft.com"},
-    "AMZN": {"yf": "AMZN", "tv": "NASDAQ:AMZN", "name": "Amazon.com Inc.", "logo": "https://logo.clearbit.com/amazon.com"},
-    "GOOGL": {"yf": "GOOGL", "tv": "NASDAQ:GOOGL", "name": "Alphabet Inc.", "logo": "https://logo.clearbit.com/google.com"},
-    "META": {"yf": "META", "tv": "NASDAQ:META", "name": "Meta Platforms Inc.", "logo": "https://logo.clearbit.com/meta.com"},
-    "NFLX": {"yf": "NFLX", "tv": "NASDAQ:NFLX", "name": "Netflix Inc.", "logo": "https://logo.clearbit.com/netflix.com"},
-    "AMD": {"yf": "AMD", "tv": "NASDAQ:AMD", "name": "Advanced Micro Devices Inc.", "logo": "https://logo.clearbit.com/amd.com"}
-}
-
-def get_chart_synced_data(symbol):
-    clean_symbol = symbol.strip().upper()
-    if clean_symbol in ASSET_REGISTRY:
-        target_yf = ASSET_REGISTRY[clean_symbol]["yf"]
-        target_tv = ASSET_REGISTRY[clean_symbol]["tv"]
-        default_name = ASSET_REGISTRY[clean_symbol]["name"]
-        logo_url = ASSET_REGISTRY[clean_symbol]["logo"]
-    else:
-        target_yf = clean_symbol
-        if "USD" in clean_symbol or clean_symbol in ["BTC", "ETH", "SOL", "XRP", "DOGE"]:
-            target_tv = f"BINANCE:{clean_symbol}USDT"
-            target_yf = f"{clean_symbol}-USD"
-        elif clean_symbol in ["GOLD", "SILVER"]:
-            target_tv = f"TVC:{clean_symbol}"
-        elif clean_symbol in ["OIL", "CL"]:
-            target_tv = "NYMEX:CL1!"
-        else:
-            target_tv = f"NASDAQ:{clean_symbol}"
-        default_name = f"{clean_symbol} Market Asset"
-        logo_url = f"https://logo.clearbit.com/{clean_symbol.lower()}.com"
-
-    try:
-        ticker_obj = yf.Ticker(target_yf)
-        todays_data = ticker_obj.history(period="5d", interval="1d")
-        if todays_data.empty and "-" not in target_yf:
-            ticker_obj = yf.Ticker(f"{target_yf}-USD")
-            todays_data = ticker_obj.history(period="5d", interval="1d")
-
-        if not todays_data.empty:
-            current_price = float(todays_data['Close'].iloc[-1])
-            prev_close = float(todays_data['Close'].iloc[-2]) if len(todays_data) > 1 else current_price
-            high_price = float(todays_data['High'].max())
-            low_price = float(todays_data['Low'].min())
-            
-            try:
-                info = ticker_obj.info
-                company_name = info.get('longName', info.get('shortName', default_name))
-            except:
-                company_name = default_name
-            
-            return {
-                "symbol": clean_symbol,
-                "companyName": company_name,
-                "currentPrice": round(current_price, 2),
-                "previousClose": round(prev_close, 2),
-                "high": round(high_price, 2),
-                "low": round(low_price, 2),
-                "exchange": target_tv,
-                "logo": logo_url
-            }
-    except Exception as e:
-        print(f"yfinance error: {e}")
-
-    fallback_prices = {
-        "BTC": 64500.00, "ETH": 3500.00, "SOL": 145.00, "AAPL": 220.00, 
-        "TSLA": 328.58, "NVDA": 125.00, "GOLD": 2400.00, "OIL": 78.18
-    }
-    p = fallback_prices.get(clean_symbol, 150.00)
-    return {
-        "symbol": clean_symbol,
-        "companyName": default_name,
-        "currentPrice": p,
-        "previousClose": p * 0.99,
-        "high": p * 1.02,
-        "low": p * 0.98,
-        "exchange": target_tv,
-        "logo": logo_url
-    }
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/api/company/<symbol>')
-def get_company(symbol):
-    try:
-        return jsonify(get_chart_synced_data(symbol))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
-        data = get_chart_synced_data(symbol)
-        live_price_override = request.args.get('live_price')
+        # Prompt Groq Llama 3.3 for technical analysis text based on the TradingView symbol
+        prompt = f"Provide a concise professional stock market analysis, key strengths, risks, and a short-term outlook prediction (Bullish/Bearish/Hold) for {symbol}."
         
-        if live_price_override:
-            try:
-                latest_close = float(live_price_override)
-            except:
-                latest_close = data["currentPrice"]
-        else:
-            latest_close = data["currentPrice"]
-
-        day_high = max(data["high"], latest_close * 1.015)
-        day_low = min(data["low"], latest_close * 0.985)
-
-        asset_name = data["companyName"]
-        exchange_param = data["exchange"]
-
-        prompt = f"""
-You are an expert financial analyst. Analyze market asset '{asset_name} ({symbol.upper()})' actively tracked via feed '{exchange_param}'.
-CRITICAL: You MUST base your analysis strictly and exclusively on these current real-time figures:
-- Live Market Price: ${latest_close:.2f}
-- Session High: ${day_high:.2f}
-- Session Low: ${day_low:.2f}
-
-Evaluate the technical setup accurately and decide whether to BUY, SELL, or HOLD based strictly on these live numbers.
-Respond strictly with valid JSON using the exact schema below:
-{{
-    "recommendation": "BUY" | "SELL" | "HOLD",
-    "confidenceScore": <integer 0-100>,
-    "marketSummary": "<2 sentences explicitly mentioning current price ${latest_close:.2f} for {symbol.upper()} via Real-Time Feed '{exchange_param}'>",
-    "currentTrend": "<1 sentence technical outlook based on session high/low>",
-    "keyStrengths": ["<str1>", "<str2>"],
-    "keyRisks": ["<risk1>", "<risk2>"],
-    "riskLevel": "Low" | "Medium" | "High",
-    "nextMove": {{
-        "predictedDirection": "BULLISH" | "BEARISH" | "SIDEWAYS",
-        "targetPrice": "${latest_close * 1.025:.2f}",
-        "predictedRange": "${day_low:.2f} - ${day_high:.2f}",
-        "reasoning": "<1 sentence technical reasoning based on price levels>"
-    }}
-}}
-Do not output markdown text or explanation outside JSON.
-"""
-
-        if not groq_client:
-            return jsonify({
-                "recommendation": "HOLD",
-                "confidenceScore": 80,
-                "marketSummary": f"{asset_name} ({symbol.upper()}) is active at a live price of ${latest_close:.2f}.",
-                "currentTrend": "Price action is stabilizing within current session ranges.",
-                "keyStrengths": ["Consistent exchange volume", "Stable trend support"],
-                "keyRisks": ["Intraday resistance overhead"],
-                "riskLevel": "Medium",
-                "nextMove": {
-                    "predictedDirection": "BULLISH",
-                    "targetPrice": f"${latest_close * 1.02:.2f}",
-                    "predictedRange": f"${day_low:.2f} - ${day_high:.2f}",
-                    "reasoning": "Momentum indicates potential push toward immediate resistance."
-                }
-            })
-
-        chat = groq_client.chat.completions.create(
+        chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile",
-            temperature=0.1,
-            response_format={"type": "json_object"}
         )
-        return jsonify(json.loads(chat.choices[0].message.content))
+        analysis_text = chat_completion.choices[0].message.content
+        
+        # Format output into clean HTML for your dashboard card
+        formatted_html = f"""
+            <div class="p-2">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-warning text-dark">SIGNAL ACTIVE</span>
+                    <span class="text-muted small">Symbol: {symbol}</span>
+                </div>
+                <p class="small text-light" style="line-height: 1.5; max-height: 320px; overflow-y: auto;">
+                    {analysis_text.replace('\n', '<br>')}
+                </p>
+            </div>
+        """
+        return jsonify({"analysis": formatted_html})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/news/<symbol>')
-def get_news(symbol):
-    clean_symbol = symbol.upper()
-    return jsonify({
-        "overallSentiment": "Bullish",
-        "articles": [
-            {"title": f"Live market sentiment and technical depth for {clean_symbol}.", "link": "https://www.tradingview.com", "publisher": "TradingView Feed"},
-            {"title": f"Intraday price action analysis and key levels for {clean_symbol}.", "link": "https://www.tradingview.com/markets/", "publisher": "TradingView News"}
-        ]
-    })
-
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True)
