@@ -52,7 +52,7 @@
     <!-- Main Dashboard Body -->
     <div class="container-fluid py-4">
         
-        <!-- TradingView Symbol Info Live Header Widget (Fixed height to prevent squishing) -->
+        <!-- TradingView Symbol Info Live Header Widget -->
         <div class="yf-card mb-4 p-2" style="height: 115px; overflow: hidden;">
             <div id="tradingview-symbol-info-container"></div>
         </div>
@@ -70,20 +70,27 @@
                 </div>
             </div>
 
-            <!-- Right Column: Groq AI Stock Analyzer -->
+            <!-- Right Column: Groq AI Stock Analyzer & Chat Assistant -->
             <div class="col-lg-4">
-                <div class="yf-card h-100 mb-0 d-flex flex-column">
-                    <div class="ai-header d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0 text-white"><i class="bi bi-cpu me-2 text-info"></i>Groq AI Stock Analyzer</h5>
+                <div class="yf-card h-100 mb-0 d-flex flex-column" style="max-height: 600px;">
+                    <div class="ai-header d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="fw-bold mb-0 text-white"><i class="bi bi-cpu me-2 text-info"></i>Groq AI Assistant</h5>
                         <span class="badge bg-info text-dark">Llama 3.3</span>
                     </div>
                     
-                    <div id="ai-analysis-content" class="flex-grow-1">
+                    <!-- Analysis & Chat Container -->
+                    <div id="ai-analysis-content" class="flex-grow-1 mb-2" style="overflow-y: auto;">
                         <div class="text-center py-5">
                             <div class="spinner-border text-info" role="status"></div>
                             <p class="mt-2 text-muted small">Analyzing TradingView live feed...</p>
                         </div>
                     </div>
+
+                    <!-- Follow-up Chat Input Form -->
+                    <form id="ai-chat-form" class="input-group mt-auto pt-2 border-top border-secondary">
+                        <input type="text" id="ai-chat-input" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ask follow-up (e.g. support level?)..." autocomplete="off">
+                        <button class="btn btn-sm btn-info" type="submit"><i class="bi bi-send-fill"></i></button>
+                    </form>
                 </div>
             </div>
         </div>
