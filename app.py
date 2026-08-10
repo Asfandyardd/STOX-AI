@@ -12,8 +12,8 @@ def index():
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
-        # Prompt Groq Llama 3.3 for professional market insights without speculative pricing hallucination
-        prompt = f"Provide a brief technical market outlook, key strengths, and risks for the stock/crypto symbol {symbol}. Keep it concise and professional without generating speculative target prices."
+        # Prompt Groq Llama 3.3 to include a dedicated Next Moves section
+        prompt = f"Provide a brief technical market outlook, key strengths, risks, and a clear 'Next Moves / Actionable Strategy' (e.g., Buy, Hold, or Wait for pullback) for the stock/crypto symbol {symbol}. Keep it concise and professional."
         
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
@@ -21,16 +21,16 @@ def analyze_stock(symbol):
         )
         analysis_text = chat_completion.choices[0].message.content
         
-        # Format output into clean HTML for your dashboard card
+        # Format output into clean HTML with distinct sections
         formatted_html = f"""
             <div class="p-2">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="badge bg-success text-dark">AI MODEL ACTIVE</span>
                     <span class="text-muted small">Asset: {symbol}</span>
                 </div>
-                <p class="small text-light" style="line-height: 1.5; max-height: 320px; overflow-y: auto;">
+                <div class="small text-light" style="line-height: 1.5; max-height: 380px; overflow-y: auto;">
                     {analysis_text.replace('\n', '<br>')}
-                </p>
+                </div>
             </div>
         """
         return jsonify({"analysis": formatted_html})
