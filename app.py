@@ -14,23 +14,23 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
 
 ASSET_REGISTRY = {
-    "BTC": {"yf": "BTC-USD", "tv": "BINANCE:BTCUSDT", "name": "Bitcoin USD"},
-    "ETH": {"yf": "ETH-USD", "tv": "BINANCE:ETHUSDT", "name": "Ethereum USD"},
-    "SOL": {"yf": "SOL-USD", "tv": "BINANCE:SOLUSDT", "name": "Solana USD"},
-    "XRP": {"yf": "XRP-USD", "tv": "BINANCE:XRPUSDT", "name": "XRP USD"},
-    "DOGE": {"yf": "DOGE-USD", "tv": "BINANCE:DOGEUSDT", "name": "Dogecoin USD"},
-    "GOLD": {"yf": "GC=F", "tv": "TVC:GOLD", "name": "Gold Futures"},
-    "OIL": {"yf": "CL=F", "tv": "NYMEX:CL1!", "name": "Crude Oil Futures"},
-    "SILVER": {"yf": "SI=F", "tv": "TVC:SILVER", "name": "Silver Futures"},
-    "AAPL": {"yf": "AAPL", "tv": "NASDAQ:AAPL", "name": "Apple Inc."},
-    "TSLA": {"yf": "TSLA", "tv": "NASDAQ:TSLA", "name": "Tesla Inc."},
-    "NVDA": {"yf": "NVDA", "tv": "NASDAQ:NVDA", "name": "NVIDIA Corporation"},
-    "MSFT": {"yf": "MSFT", "tv": "NASDAQ:MSFT", "name": "Microsoft Corporation"},
-    "AMZN": {"yf": "AMZN", "tv": "NASDAQ:AMZN", "name": "Amazon.com Inc."},
-    "GOOGL": {"yf": "GOOGL", "tv": "NASDAQ:GOOGL", "name": "Alphabet Inc."},
-    "META": {"yf": "META", "tv": "NASDAQ:META", "name": "Meta Platforms Inc."},
-    "NFLX": {"yf": "NFLX", "tv": "NASDAQ:NFLX", "name": "Netflix Inc."},
-    "AMD": {"yf": "AMD", "tv": "NASDAQ:AMD", "name": "Advanced Micro Devices Inc."}
+    "BTC": {"yf": "BTC-USD", "tv": "BINANCE:BTCUSDT", "name": "Bitcoin USD", "logo": "https://assets.coingecko.com/coins/images/1/large/bitcoin.png"},
+    "ETH": {"yf": "ETH-USD", "tv": "BINANCE:ETHUSDT", "name": "Ethereum USD", "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png"},
+    "SOL": {"yf": "SOL-USD", "tv": "BINANCE:SOLUSDT", "name": "Solana USD", "logo": "https://assets.coingecko.com/coins/images/4128/large/solana.png"},
+    "XRP": {"yf": "XRP-USD", "tv": "BINANCE:XRPUSDT", "name": "XRP USD", "logo": "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png"},
+    "DOGE": {"yf": "DOGE-USD", "tv": "BINANCE:DOGEUSDT", "name": "Dogecoin USD", "logo": "https://assets.coingecko.com/coins/images/5/large/dogecoin.png"},
+    "GOLD": {"yf": "GC=F", "tv": "TVC:GOLD", "name": "Gold Futures", "logo": "https://images.vexels.com/media/users/3/142718/isolated/preview/102c77d46c82779fa69911e3b6a9c9f0-gold-bars-icon-by-vexels.png"},
+    "OIL": {"yf": "CL=F", "tv": "NYMEX:CL1!", "name": "Crude Oil Futures", "logo": "https://cdn-icons-png.flaticon.com/512/2933/2933458.png"},
+    "SILVER": {"yf": "SI=F", "tv": "TVC:SILVER", "name": "Silver Futures", "logo": "https://cdn-icons-png.flaticon.com/512/2933/2933464.png"},
+    "AAPL": {"yf": "AAPL", "tv": "NASDAQ:AAPL", "name": "Apple Inc.", "logo": "https://logo.clearbit.com/apple.com"},
+    "TSLA": {"yf": "TSLA", "tv": "NASDAQ:TSLA", "name": "Tesla Inc.", "logo": "https://logo.clearbit.com/tesla.com"},
+    "NVDA": {"yf": "NVDA", "tv": "NASDAQ:NVDA", "name": "NVIDIA Corporation", "logo": "https://logo.clearbit.com/nvidia.com"},
+    "MSFT": {"yf": "MSFT", "tv": "NASDAQ:MSFT", "name": "Microsoft Corporation", "logo": "https://logo.clearbit.com/microsoft.com"},
+    "AMZN": {"yf": "AMZN", "tv": "NASDAQ:AMZN", "name": "Amazon.com Inc.", "logo": "https://logo.clearbit.com/amazon.com"},
+    "GOOGL": {"yf": "GOOGL", "tv": "NASDAQ:GOOGL", "name": "Alphabet Inc.", "logo": "https://logo.clearbit.com/google.com"},
+    "META": {"yf": "META", "tv": "NASDAQ:META", "name": "Meta Platforms Inc.", "logo": "https://logo.clearbit.com/meta.com"},
+    "NFLX": {"yf": "NFLX", "tv": "NASDAQ:NFLX", "name": "Netflix Inc.", "logo": "https://logo.clearbit.com/netflix.com"},
+    "AMD": {"yf": "AMD", "tv": "NASDAQ:AMD", "name": "Advanced Micro Devices Inc.", "logo": "https://logo.clearbit.com/amd.com"}
 }
 
 def get_chart_synced_data(symbol):
@@ -39,6 +39,7 @@ def get_chart_synced_data(symbol):
         target_yf = ASSET_REGISTRY[clean_symbol]["yf"]
         target_tv = ASSET_REGISTRY[clean_symbol]["tv"]
         default_name = ASSET_REGISTRY[clean_symbol]["name"]
+        logo_url = ASSET_REGISTRY[clean_symbol]["logo"]
     else:
         target_yf = clean_symbol
         if "USD" in clean_symbol or clean_symbol in ["BTC", "ETH", "SOL", "XRP", "DOGE"]:
@@ -51,6 +52,7 @@ def get_chart_synced_data(symbol):
         else:
             target_tv = f"NASDAQ:{clean_symbol}"
         default_name = f"{clean_symbol} Market Asset"
+        logo_url = f"https://logo.clearbit.com/{clean_symbol.lower()}.com"
 
     try:
         ticker_obj = yf.Ticker(target_yf)
@@ -78,7 +80,8 @@ def get_chart_synced_data(symbol):
                 "previousClose": round(prev_close, 2),
                 "high": round(high_price, 2),
                 "low": round(low_price, 2),
-                "exchange": target_tv
+                "exchange": target_tv,
+                "logo": logo_url
             }
     except Exception as e:
         print(f"yfinance error: {e}")
@@ -95,7 +98,8 @@ def get_chart_synced_data(symbol):
         "previousClose": p * 0.99,
         "high": p * 1.02,
         "low": p * 0.98,
-        "exchange": target_tv
+        "exchange": target_tv,
+        "logo": logo_url
     }
 
 @app.route('/')
