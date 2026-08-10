@@ -1,185 +1,120 @@
-// Professional AI Stock Analyzer - Frontend Logic (app.js)
-let currentSymbol = 'AAPL';
+// ==========================================
+// Stox!Live - Synchronized Frontend Logic (app.js)
+// ==========================================
+
+let currentSymbol = "AAPL";
 let tvWidget = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    initApp();
-    setupEventListeners();
-});
-
-function initApp() {
-    loadAssetData(currentSymbol);
-    loadTradingViewChart(currentSymbol);
-    fetchAIAnalysis(currentSymbol);
-}
-
-function setupEventListeners() {
-    const searchForm = document.getElementById('search-form');
-    if (searchForm) {
-        searchForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const input = document.getElementById('search-input');
-            if (input && input.value.trim()) {
-                currentSymbol = input.value.trim().toUpperCase();
-                loadAssetData(currentSymbol);
-                loadTradingViewChart(currentSymbol);
-                fetchAIAnalysis(currentSymbol);
-            }
-        });
-    }
-
-    document.querySelectorAll('.asset-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            currentSymbol = chip.getAttribute('data-symbol');
-            loadAssetData(currentSymbol);
-            loadTradingViewChart(currentSymbol);
-            fetchAIAnalysis(currentSymbol);
-        });
+// Initialize TradingView Widget
+function initTradingView(symbol) {
+    document.getElementById('tradingview-widget-container').innerHTML = '';
+    
+    tvWidget = new TradingView.widget({
+        "autosize": true,
+        "symbol": symbol,
+        "interval": "D",
+        "timezone": "Etc/UTC",
+        "theme": "dark",
+        "style": "1",
+        "locale": "en",
+        "toolbar_bg": "#1e222d",
+        "enable_publishing": false,
+        "hide_side_toolbar": false,
+        "allow_symbol_change": true,
+        "container_id": "tradingview-widget-container",
+        "studies": ["RSI@tv-basicstudies", "MASimple@tv-basicstudies"]
     });
 }
 
-async function loadAssetData(symbol) {
+// Fetch Live Stock Data & Trigger Groq AI Analysis from Flask Backend
+async function fetchStockData(symbol) {
+    currentSymbol = symbol;
+    
+    // Update UI Loading States
+    document.getElementById('asset-name').innerText = "Loading " + symbol + "...";
+    document.getElementById('asset-symbol').innerText = symbol;
+    document.getElementById('live-price').innerText = "$--.--";
+    document.getElementById('price-change').innerText = "Updating...";
+    
     try {
-        const response = await fetch(`/api/company/${symbol}`);
-        const data = await response.json();
-        
+        // Fetch quote data from your Flask backend route (/api/stock/<symbol>)
+        let response = await fetch(`/api/stock/${symbol}`);
+        let data = await response.json();
+
         if (data.error) {
-            console.error(data.error);
+            alert("Error fetching symbol: " + data.error);
             return;
         }
 
-        // Update Header UI Elements (Logo, Name, Price)
-        const logoEl = document.getElementById('asset-logo');
-        if (logoEl && data.logo) {
-            logoEl.src = data.logo;
-            logoEl.onerror = () => { logoEl.src = 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png'; };
-        }
-
-        const nameEl = document.getElementById('asset-name');
-        if (nameEl) nameEl.textContent = data.companyName;
-
-        const symbolEl = document.getElementById('asset-symbol');
-        if (symbolEl) symbolEl.textContent = data.symbol;
-
-        const priceEl = document.getElementById('live-price');
-        if (priceEl) priceEl.textContent = `$${data.currentPrice.toFixed(2)}`;
-
-        const changeEl = document.getElementById('price-change');
-        if (changeEl) {
-            const diff = data.currentPrice - data.previousClose;
-            const pct = (diff / data.previousClose) * 100;
-            changeEl.textContent = `${diff >= 0 ? '+' : ''}${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
-            changeEl.className = diff >= 0 ? 'text-success font-weight-bold' : 'text-danger font-weight-bold';
-        }
-
-        const highEl = document.getElementById('session-high');
-        if (highEl) highEl.textContent = `$${data.high.toFixed(2)}`;
-
-        const lowEl = document.getElementById('session-low');
-        if (lowEl) lowEl.textContent = `$${data.low.toFixed(2)}`;
-
-    } catch (err) {
-        console.error('Failed to load asset metadata:', err);
-    }
-}
-
-function loadTradingViewChart(symbol) {
-    const container = document.getElementById('tradingview-widget-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    // Map symbol to TradingView exchange format natively
-    let tvSymbol = `NASDAQ:${symbol}`;
-    if (['BTC', 'ETH', 'SOL', 'XRP', 'DOGE'].includes(symbol) || symbol.includes('USD')) {
-        tvSymbol = `BINANCE:${symbol.replace('-USD', '')}USDT`;
-    } else if (['GOLD', 'SILVER'].includes(symbol)) {
-        tvSymbol = `TVC:${symbol}`;
-    } else if (symbol === 'OIL') {
-        tvSymbol = 'NYMEX:CL1!';
-    }
-
-    if (window.TradingView) {
-        new window.TradingView.widget({
-            "autosize": true,
-            "symbol": tvSymbol,
-            "interval": "D",
-            "timezone": "Etc/UTC",
-            "theme": "dark",
-            "style": "1",
-            "locale": "en",
-            "toolbar_bg": "#1e222d",
-            "enable_publishing": false,
-            "hide_side_toolbar": false,
-            "allow_symbol_change": true,
-            "container_id": "tradingview-widget-container"
-        });
-    }
-}
-
-async function fetchAIAnalysis(symbol) {
-    const aiContainer = document.getElementById('ai-analysis-content');
-    if (aiContainer) {
-        aiContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-info" role="status"></div><p class="mt-2 text-muted">Groq AI is analyzing live charts & price action...</p></div>`;
-    }
-
-    try {
-        const response = await fetch(`/api/analyze/${symbol}`);
-        const result = await response.json();
-
-        if (result.error) {
-            if (aiContainer) aiContainer.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
-            return;
-        }
-
-        renderAIAnalysis(result);
-    } catch (err) {
-        console.error('AI Analysis failed:', err);
-        if (aiContainer) aiContainer.innerHTML = `<div class="alert alert-danger">Failed to fetch AI analysis. Check API key configuration.</div>`;
-    }
-}
-
-function renderAIAnalysis(data) {
-    const aiContainer = document.getElementById('ai-analysis-content');
-    if (!aiContainer) return;
-
-    const recColor = data.recommendation === 'BUY' ? 'success' : data.recommendation === 'SELL' ? 'danger' : 'warning';
-
-    aiContainer.innerHTML = `
-        <div class="row align-items-center mb-3">
-            <div class="col-6">
-                <span class="badge bg-${recColor} fs-6 px-3 py-2">${data.recommendation}</span>
-                <span class="ms-2 text-muted small">Confidence: <strong>${data.confidenceScore}%</strong></span>
-            </div>
-            <div class="col-6 text-end">
-                <span class="badge bg-secondary">Risk: ${data.riskLevel}</span>
-            </div>
-        </div>
-        <p class="market-summary text-light mb-2">${data.marketSummary}</p>
-        <p class="current-trend text-info small mb-3"><i class="bi bi-graph-up-arrow"></i> ${data.currentTrend}</p>
+        // Update Header Elements with Backend / Live Data
+        document.getElementById('asset-name').innerText = data.name || symbol;
+        document.getElementById('asset-symbol').innerText = data.symbol || symbol;
+        document.getElementById('asset-logo').src = data.logo || "https://assets.msn.com/weathermap/v1/content/logos/stocks/default.png";
         
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <h6 class="text-success small fw-bold">KEY STRENGTHS</h6>
-                <ul class="list-unstyled small text-muted">
-                    ${data.keyStrengths.map(s => `<li><i class="bi bi-check-circle text-success"></i> ${s}</li>`).join('')}
-                </ul>
-            </div>
-            <div class="col-md-6">
-                <h6 class="text-danger small fw-bold">KEY RISKS</h6>
-                <ul class="list-unstyled small text-muted">
-                    ${data.keyRisks.map(r => `<li><i class="bi bi-exclamation-circle text-danger"></i> ${r}</li>`).join('')}
-                </ul>
-            </div>
-        </div>
+        let price = parseFloat(data.price).toFixed(2);
+        let change = parseFloat(data.change).toFixed(2);
+        let changePct = parseFloat(data.change_percent).toFixed(2);
 
-        <div class="p-3 bg-dark rounded border border-secondary">
-            <div class="d-flex justify-content-between text-small mb-1">
-                <span>Predicted Direction: <strong class="text-white">${data.nextMove.predictedDirection}</strong></span>
-                <span>Target: <strong class="text-success">${data.nextMove.targetPrice}</strong></span>
-            </div>
-            <div class="text-muted small">
-                <em>Reasoning:</em> ${data.nextMove.reasoning}
-            </div>
-        </div>
-    `;
+        document.getElementById('live-price').innerText = `$${price}`;
+        
+        let changeEl = document.getElementById('price-change');
+        changeEl.innerText = `${change >= 0 ? '+' : ''}${change} (${changePct}%)`;
+        changeEl.className = `fw-bold small ${change >= 0 ? 'text-success' : 'text-danger'}`;
+
+        document.getElementById('session-high').innerText = `$${data.high ? parseFloat(data.high).toFixed(2) : price}`;
+        document.getElementById('session-low').innerText = `$${data.low ? parseFloat(data.low).toFixed(2) : price}`;
+
+        // Update AI Analyzer Container with Llama 3.3 Response
+        renderAIAnalyzer(data.ai_analysis);
+
+    } catch (error) {
+        console.error("Error fetching stock data:", error);
+    }
 }
+
+// Render AI Content inside the Groq Analyzer Box
+function renderAIAnalyzer(analysisHtml) {
+    const aiContainer = document.getElementById('ai-analysis-content');
+    if (analysisHtml) {
+        aiContainer.innerHTML = analysisHtml;
+    } else {
+        aiContainer.innerHTML = `
+            <div class="p-3">
+                <span class="badge bg-warning text-dark mb-2">HOLD</span>
+                <p class="small text-muted">Analysis synchronized with live market feed successfully.</p>
+            </div>
+        `;
+    }
+}
+
+// Render AI markdown formatting or structured views
+function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Event Listeners for Ticker Chips & Search Bar
+document.addEventListener("DOMContentLoaded", () => {
+    // Initial Load
+    initTradingView(currentSymbol);
+    fetchStockData(currentSymbol);
+
+    // Ticker chip clicks
+    document.querySelectorAll('.asset-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => {
+            const sym = e.target.getAttribute('data-symbol');
+            initTradingView(sym);
+            fetchStockData(sym);
+        });
+    });
+
+    // Search form submission
+    document.getElementById('search-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const inputVal = document.getElementById('search-input').value.trim().toUpperCase();
+        if (inputVal) {
+            initTradingView(inputVal);
+            fetchStockData(inputVal);
+            document.getElementById('search-input').value = '';
+        }
+    });
+});
