@@ -3,165 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Full-Stack AI Stock Analyzer & Live Charts</title>
-    <script src="https://tradingview.com/embed-widget/advanced-chart.js" async></script>
+    <title> Stox!Live - Stock Market Live, Quote, Business & Finance News</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Custom Yahoo Finance Dark Styling -->
     <style>
-        body { font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        .main-layout { display: flex; gap: 20px; height: 72vh; }
-        .chart-container { flex: 2; background: #1e293b; border-radius: 12px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .ai-panel { flex: 1; background: #1e293b; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        
-        /* Bottom Analytics Grid Container */
-        .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-        
-        /* News & Sentiment Section */
-        .news-section { background: #1e293b; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-top: 20px; }
-        .news-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
-        .news-card { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
-        .news-card h4 { margin: 0 0 8px 0; color: #38bdf8; font-size: 0.95rem; }
-        .news-card p { margin: 0 0 10px 0; color: #94a3b8; font-size: 0.82rem; }
-        
-        /* New Modules Styling */
-        .module-card { background: #1e293b; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .target-bar-container { background: #0f172a; border-radius: 8px; padding: 12px; margin-top: 12px; border: 1px solid #334155; }
-        .target-stats { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; color: #cbd5e1; }
-        .progress-track { background: #334155; height: 10px; border-radius: 5px; position: relative; overflow: hidden; }
-        .progress-fill { background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%); width: 68%; height: 100%; border-radius: 5px; }
+        :root {
+            --yf-bg: #181b20;
+            --yf-card-bg: #232731;
+            --yf-border: #2f3542;
+            --yf-purple: #6001d2;
+            --yf-purple-hover: #7b1cd8;
+            --yf-text: #ffffff;
+            --yf-text-muted: #959ea6;
+            --yf-green: #00b09b;
+            --yf-red: #ff3333;
+        }
 
-        .order-book-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 8px 0; }
-        .depth-bar { background: #334155; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px; }
-        .depth-bid { background: #10b981; height: 100%; width: 72%; }
-        .depth-ask { background: #ef4444; height: 100%; width: 45%; }
+        body {
+            background-color: var(--yf-bg);
+            color: var(--yf-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
 
-        .sentiment-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-        .badge-bullish { background: #065f46; color: #34d399; }
-        .badge-bearish { background: #7f1d1d; color: #f87171; }
+        /* Navbar & Header */
+        .navbar-yf {
+            background-color: var(--yf-card-bg);
+            border-bottom: 1px solid var(--yf-border);
+            padding: 10px 20px;
+        }
 
-        h1 { margin-bottom: 10px; font-size: 1.5rem; color: #f1f5f9; }
-        h2, h3 { margin-top: 0; color: #38bdf8; font-size: 1.1rem; }
-        .ai-output { background: #0f172a; color: #34d399; padding: 15px; border-radius: 8px; flex-grow: 1; overflow-y: auto; font-family: monospace; white-space: pre-wrap; margin-top: 10px; border: 1px solid #334155; font-size: 0.85rem; }
-        button { background: #38bdf8; color: #0f172a; border: none; padding: 10px 15px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-        button:hover { background: #0ea5e9; }
-        p { color: #94a3b8; font-size: 0.88rem; }
+        .navbar-brand {
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            font-size: 1.5rem;
+            color: #fff !important;
+        }
+
+        .navbar-brand span {
+            color: var(--yf-purple);
+        }
+
+        .search-box .form-control {
+            background-color: var(--yf-bg);
+            border: 1px solid var(--yf-border);
+            color: #fff;
+            border-radius: 20px 0 0 20px;
+            padding-left: 20px;
+        }
+
+        .search-box .form-control:focus {
+            background-color: var(--yf-bg);
+            border-color: var(--yf-purple);
+            color: #fff;
+            box-shadow: none;
+        }
+
+        .search-box .btn {
+            background-color: var(--yf-purple);
+            border: 1px solid var(--yf-purple);
+            color: #fff;
+            border-radius: 0 20px 20px 0;
+            padding: 0 20px;
+        }
+
+        .search-box .btn:hover {
+            background-color: var(--yf-purple-hover);
+        }
+
+        /* Asset Quick Ticker Bar */
+        .ticker-bar {
+            background-color: #1e222d;
+            border-bottom: 1px solid var(--yf-border);
+            padding: 8px 0;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .asset-chip {
+            background-color: var(--yf-card-bg);
+            border: 1px solid var(--yf-border);
+            color: var(--yf-text);
+            border-radius: 16px;
+            padding: 4px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 8px;
+            cursor: pointer;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+
+        .asset-chip:hover {
+            border-color: var(--yf-purple);
+            background-color: #2a2f3d;
+        }
+
+        /* Main Content Grid & Cards */
+        .yf-card {
+            background-color: var(--yf-card-bg);
+            border: 1px solid var(--yf-border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Asset Header Banner */
+        .asset-header-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: contain;
+            background: #fff;
+            padding: 4px;
+        }
+
+        /* TradingView Chart Container */
+        #tradingview-widget-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--yf-border);
+        }
+
+        /* AI Analyzer Styles */
+        .ai-header {
+            border-bottom: 1px solid var(--yf-border);
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+
+        .text-success { color: var(--yf-green) !important; }
+        .text-danger { color: var(--yf-red) !important; }
+        .text-muted { color: var(--yf-text-muted) !important; }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--yf-bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--yf-border);
+            border-radius: 3px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Full-Stack AI Stock Analyzer & Live Charts</h1>
-    
-    <!-- Top Section: Chart & AI Strategist Panel -->
-    <div class="main-layout">
-        <div class="chart-container">
-            <div class="tradingview-widget-container" style="height:100%;width:100%">
-                <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
-                <script type="text/javascript">
-                    new TradingView.widget({
-                        "autosize": true,
-                        "symbol": "NASDAQ:AAPL",
-                        "interval": "D",
-                        "timezone": "Etc/UTC",
-                        "theme": "dark",
-                        "style": "1",
-                        "locale": "en",
-                        "toolbar_bg": "#f1f3f6",
-                        "enable_publishing": false,
-                        "allow_symbol_change": true,
-                        "container_id": "tradingview_widget"
-                    });
-                </script>
-            </div>
-        </div>
-
-        <div class="ai-panel">
-            <h2>Live AI Market Strategist</h2>
-            <p>Trigger live stream evaluations directly using backend calculations.</p>
-            <button onclick="fetchAIAnalysis()">Run AI Analysis</button>
-            <div id="aiOutput" class="ai-output">Awaiting analysis execution...</div>
-        </div>
-    </div>
-
-    <!-- Middle Section: AI Price Targets & Level 2 Depth Visualizer -->
-    <div class="analytics-grid">
-        <!-- Module 1: AI Price Target Estimator -->
-        <div class="module-card">
-            <h3>AI Price Target Estimator</h3>
-            <p>Projected short-term valuation bands based on live market regressions.</p>
-            <div class="target-bar-container">
-                <div class="target-stats">
-                    <span>Low: <strong>$175.00</strong></span>
-                    <span>Consensus: <strong>$192.50</strong></span>
-                    <span>High: <strong>$210.00</strong></span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Module 2: Order Book Pressure Depth -->
-        <div class="module-card">
-            <h3>Market Depth & Order Flow</h3>
-            <p>Real-time buy/sell pressure ratio aggregated from recent order books.</p>
-            <div style="margin-top: 12px;">
-                <div class="order-book-row">
-                    <span>Buy Pressure (Bids)</span>
-                    <span style="color: #34d399;">72%</span>
-                </div>
-                <div class="depth-bar"><div class="depth-bid"></div></div>
-                
-                <div class="order-book-row" style="margin-top: 12px;">
-                    <span>Sell Pressure (Asks)</span>
-                    <span style="color: #f87171;">28%</span>
-                </div>
-                <div class="depth-bar"><div class="depth-ask"></div></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bottom Section: Real-Time News & AI Sentiment Articles -->
-    <div class="news-section">
-        <h3>Live News & AI Sentiment Feed</h3>
-        <p>AI-aggregated financial headlines and real-time sentiment metrics for the selected ticker.</p>
-        <div class="news-grid">
-            <div class="news-card">
-                <h4>Supply Chain Resiliency Drives Stronger Quarter Forecasts</h4>
-                <p>Recent component logistics reports indicate stronger-than-expected fulfillment targets for major tech hardware divisions...</p>
-                <span class="sentiment-badge badge-bullish">Bullish Sentiment (+84%)</span>
-            </div>
-            <div class="news-card">
-                <h4>Macroeconomic Interest Rate Adjustments and Sector Impacts</h4>
-                <p>Central bank liquidity stances continue to trigger consolidation phases across high-growth equity indexes...</p>
-                <span class="sentiment-badge badge-bearish">Neutral/Bearish (-12%)</span>
-            </div>
-            <div class="news-card">
-                <h4>Institutional Volume Spikes Noted Near Key Support Bands</h4>
-                <p>Block trades recorded in late sessions point toward heavy accumulation patterns among institutional funds...</p>
-                <span class="sentiment-badge badge-bullish">Bullish Sentiment (+91%)</span>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        async function fetchAIAnalysis() {
-            const outputDiv = document.getElementById('aiOutput');
-            outputDiv.innerText = "Syncing with live chart data & running AI analysis...";
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-yf sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="bi bi-graph-up-arrow text-purple me-2" style="color: var(--yf-purple);"></i> YAHOO! <span>FINANCE AI</span>
+            </a>
             
-            try {
-                const response = await fetch('/api/ai/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbol: 'NASDAQ:AAPL', price: 185.50, indicators: { RSI: 58.4, MACD: 'Bullish' } })
-                });
-                const data = await response.json();
-                if(data.status === 'success') {
-                    outputDiv.innerText = data.analysis;
-                } else {
-                    outputDiv.innerText = "Error: " + data.message;
-                }
-            } catch (err) {
-                outputDiv.innerText = "Failed to communicate with Flask backend.";
-            }
-        }
-    </script>
+            <div class="mx-auto col-md-6 col-lg-5">
+                <form id="search-form" class="input-group search-box">
+                    <input type="text" id="search-input" class="form-control" placeholder="Search symbol or company (e.g. AAPL, TSLA, BTC)..." autocomplete="off">
+                    <button class="btn" type="submit"><i class="bi bi-search"></i></button>
+                </form>
+            </div>
+
+            <div class="d-none d-lg-block text-muted small">
+                <i class="bi bi-shield-check text-success"></i> Groq Llama 3.3 Engine Live
+            </div>
+        </div>
+    </nav>
+
+    <!-- Asset Quick Ticker Bar -->
+    <div class="ticker-bar">
+        <div class="container-fluid">
+            <span class="asset-chip" data-symbol="AAPL">AAPL</span>
+            <span class="asset-chip" data-symbol="TSLA">TSLA</span>
+            <span class="asset-chip" data-symbol="NVDA">NVDA</span>
+            <span class="asset-chip" data-symbol="BTC">BTC-USD</span>
+            <span class="asset-chip" data-symbol="ETH">ETH-USD</span>
+            <span class="asset-chip" data-symbol="SOL">SOL-USD</span>
+            <span class="asset-chip" data-symbol="MSFT">MSFT</span>
+            <span class="asset-chip" data-symbol="AMZN">AMZN</span>
+            <span class="asset-chip" data-symbol="GOOGL">GOOGL</span>
+            <span class="asset-chip" data-symbol="META">META</span>
+            <span class="asset-chip" data-symbol="GOLD">GOLD</span>
+            <span class="asset-chip" data-symbol="OIL">OIL</span>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Body -->
+    <div class="container-fluid py-4">
+        
+        <!-- Asset Title & Live Metrics Header -->
+        <div class="yf-card mb-4">
+            <div class="row align-items-center">
+                <div class="col-md-7 d-flex align-items-center">
+                    <img id="asset-logo" src="" alt="Logo" class="asset-header-logo me-3">
+                    <div>
+                        <div class="d-flex align-items-center">
+                            <h2 id="asset-name" class="mb-0 fw-bold me-2 text-white">Loading...</h2>
+                            <span id="asset-symbol" class="badge bg-secondary">...</span>
+                        </div>
+                        <p class="text-muted small mb-0">Real-time Feed & Technical Data synchronized via TradingView & Yahoo Finance</p>
+                    </div>
+                </div>
+                <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                    <div id="live-price" class="fs-2 fw-bold text-white">$0.00</div>
+                    <div id="price-change" class="fw-bold small">0.00 (0.00%)</div>
+                </div>
+            </div>
+            
+            <hr style="border-color: var(--yf-border);" class="my-3">
+
+            <div class="row text-muted small">
+                <div class="col-6 col-md-3">Session High: <strong id="session-high" class="text-light">$0.00</strong></div>
+                <div class="col-6 col-md-3">Session Low: <strong id="session-low" class="text-light">$0.00</strong></div>
+                <div class="col-6 col-md-3 mt-2 mt-md-0">Exchange: <strong class="text-light">Connected</strong></div>
+                <div class="col-6 col-md-3 mt-2 mt-md-0">Status: <strong class="text-success">Live & Streaming</strong></div>
+            </div>
+        </div>
+
+        <!-- Charts & AI Analyzer Grid -->
+        <div class="row">
+            <!-- Left Column: TradingView Chart -->
+            <div class="col-lg-8 mb-4 mb-lg-0">
+                <div class="yf-card h-100 mb-0">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0 text-white"><i class="bi bi-graph-up me-2 text-purple" style="color: var(--yf-purple);"></i>Interactive Live Chart</h5>
+                        <span class="badge bg-dark border border-secondary">TradingView Feed</span>
+                    </div>
+                    <!-- TradingView Widget Embed Container -->
+                    <div id="tradingview-widget-container"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Groq AI Stock Analyzer -->
+            <div class="col-lg-4">
+                <div class="yf-card h-100 mb-0 d-flex flex-column">
+                    <div class="ai-header d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-white"><i class="bi bi-cpu me-2 text-info"></i>Groq AI Stock Analyzer</h5>
+                        <span class="badge bg-info text-dark">Llama 3.3</span>
+                    </div>
+                    
+                    <div id="ai-analysis-content" class="flex-grow-1">
+                        <!-- Dynamic AI Content Loaded via app.js -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-info" role="status"></div>
+                            <p class="mt-2 text-muted small">Analyzing live charts & price action...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- TradingView External Script -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <!-- Custom Frontend Logic -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
