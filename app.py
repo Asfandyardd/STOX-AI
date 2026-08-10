@@ -1,18 +1,8 @@
-from flask import Flask, render_template, jsonify, request
-import os
-from groq import Groq
-
-app = Flask(__name__)
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/api/analyze/<symbol>')
 def analyze_stock(symbol):
     try:
-        prompt = f"Provide a brief technical market outlook, key strengths, risks, and a clear 'Next Moves / Actionable Strategy' (e.g., Buy, Hold, or Wait for pullback) for the stock/crypto symbol {symbol}. Keep it concise and professional."
+        # Prompt instructing the AI to use general technical posture without fabricating wrong price tags
+        prompt = f"Provide a brief technical market outlook, key strengths, risks, and actionable next moves (Buy, Hold, or Wait) for the ticker symbol {symbol}. Do not guess or specify random fixed target prices like $250 or $220 if they do not match the current trading value; keep strategic advice relative to current market structure."
         
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
@@ -26,7 +16,7 @@ def analyze_stock(symbol):
                     <span class="badge bg-success text-dark">AI MODEL ACTIVE</span>
                     <span class="text-muted small">Asset: {symbol}</span>
                 </div>
-                <div class="small text-light" style="line-height: 1.5; max-height: 250px; overflow-y: auto;">
+                <div class="small text-light" style="line-height: 1.5; max-height: 380px; overflow-y: auto;">
                     {analysis_text.replace('\n', '<br>')}
                 </div>
             </div>
@@ -34,24 +24,3 @@ def analyze_stock(symbol):
         return jsonify({"analysis": formatted_html})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@app.route('/api/chat', methods=['POST'])
-def chat_stock():
-    try:
-        data = request.json
-        symbol = data.get('symbol', 'AAPL')
-        question = data.get('question', '')
-        
-        prompt = f"Regarding the stock/crypto symbol {symbol}, answer this user question concisely and professionally: {question}"
-        
-        chat_completion = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
-        )
-        answer = chat_completion.choices[0].message.content
-        return jsonify({"answer": answer})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
