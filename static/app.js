@@ -1,209 +1,185 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const searchForm = document.getElementById("searchForm");
-    const searchInput = document.getElementById("searchInput");
-    const stockSymbolTitle = document.getElementById("stockSymbol");
-    const loadingSection = document.getElementById("loadingSection");
-    const messageBox = document.getElementById("messageBox");
-    const runAiBtn = document.getElementById("runAiBtn");
+// Professional AI Stock Analyzer - Frontend Logic (app.js)
+let currentSymbol = 'AAPL';
+let tvWidget = null;
 
-    let currentSymbol = "BTC";
+document.addEventListener('DOMContentLoaded', () => {
+    initApp();
+    setupEventListeners();
+});
 
-    searchForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const symbol = searchInput.value.trim().toUpperCase();
-        if (symbol) {
-            loadAsset(symbol);
-        }
-    });
+function initApp() {
+    loadAssetData(currentSymbol);
+    loadTradingViewChart(currentSymbol);
+    fetchAIAnalysis(currentSymbol);
+}
 
-    if (runAiBtn) {
-        runAiBtn.addEventListener("click", () => {
-            triggerAIAnalysis(currentSymbol);
+function setupEventListeners() {
+    const searchForm = document.getElementById('search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('search-input');
+            if (input && input.value.trim()) {
+                currentSymbol = input.value.trim().toUpperCase();
+                loadAssetData(currentSymbol);
+                loadTradingViewChart(currentSymbol);
+                fetchAIAnalysis(currentSymbol);
+            }
         });
     }
 
-    function showMessage(msg, isError = false) {
-        messageBox.textContent = msg;
-        messageBox.className = `yf-alert ${isError ? "error" : "success"}`;
-        messageBox.classList.remove("hidden");
-        setTimeout(() => messageBox.classList.add("hidden"), 5000);
+    document.querySelectorAll('.asset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            currentSymbol = chip.getAttribute('data-symbol');
+            loadAssetData(currentSymbol);
+            loadTradingViewChart(currentSymbol);
+            fetchAIAnalysis(currentSymbol);
+        });
+    });
+}
+
+async function loadAssetData(symbol) {
+    try {
+        const response = await fetch(`/api/company/${symbol}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error(data.error);
+            return;
+        }
+
+        // Update Header UI Elements (Logo, Name, Price)
+        const logoEl = document.getElementById('asset-logo');
+        if (logoEl && data.logo) {
+            logoEl.src = data.logo;
+            logoEl.onerror = () => { logoEl.src = 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png'; };
+        }
+
+        const nameEl = document.getElementById('asset-name');
+        if (nameEl) nameEl.textContent = data.companyName;
+
+        const symbolEl = document.getElementById('asset-symbol');
+        if (symbolEl) symbolEl.textContent = data.symbol;
+
+        const priceEl = document.getElementById('live-price');
+        if (priceEl) priceEl.textContent = `$${data.currentPrice.toFixed(2)}`;
+
+        const changeEl = document.getElementById('price-change');
+        if (changeEl) {
+            const diff = data.currentPrice - data.previousClose;
+            const pct = (diff / data.previousClose) * 100;
+            changeEl.textContent = `${diff >= 0 ? '+' : ''}${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
+            changeEl.className = diff >= 0 ? 'text-success font-weight-bold' : 'text-danger font-weight-bold';
+        }
+
+        const highEl = document.getElementById('session-high');
+        if (highEl) highEl.textContent = `$${data.high.toFixed(2)}`;
+
+        const lowEl = document.getElementById('session-low');
+        if (lowEl) lowEl.textContent = `$${data.low.toFixed(2)}`;
+
+    } catch (err) {
+        console.error('Failed to load asset metadata:', err);
+    }
+}
+
+function loadTradingViewChart(symbol) {
+    const container = document.getElementById('tradingview-widget-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Map symbol to TradingView exchange format natively
+    let tvSymbol = `NASDAQ:${symbol}`;
+    if (['BTC', 'ETH', 'SOL', 'XRP', 'DOGE'].includes(symbol) || symbol.includes('USD')) {
+        tvSymbol = `BINANCE:${symbol.replace('-USD', '')}USDT`;
+    } else if (['GOLD', 'SILVER'].includes(symbol)) {
+        tvSymbol = `TVC:${symbol}`;
+    } else if (symbol === 'OIL') {
+        tvSymbol = 'NYMEX:CL1!';
     }
 
-    function loadAsset(symbol) {
-        currentSymbol = symbol;
-        loadingSection.classList.remove("hidden");
-
-        fetch(`/api/company/${symbol}`)
-            .then(res => res.json())
-            .then(data => {
-                loadingSection.classList.add("hidden");
-                if (data.error) {
-                    showMessage(data.error, true);
-                    return;
-                }
-
-                stockSymbolTitle.textContent = `${data.companyName} (${data.symbol})`;
-                
-                // Reset AI Panel State
-                document.getElementById("aiPromptState").classList.remove("hidden");
-                document.getElementById("aiResultsContainer").classList.add("hidden");
-                document.getElementById("aiSentiment").textContent = "READY";
-                document.getElementById("aiSentiment").className = "sentiment-badge neutral";
-
-                renderWidgets(data.symbol, data.exchange);
-                fetchNews(data.symbol);
-            })
-            .catch(err => {
-                loadingSection.classList.add("hidden");
-                showMessage("Failed to connect to backend server.", true);
-            });
-    }
-
-    function renderWidgets(symbol, exchange) {
-        // 1. Candlestick Chart Widget
-        document.getElementById("tradingview-container").innerHTML = "";
-        new TradingView.widget({
-            "width": "100%",
-            "height": "480",
-            "symbol": exchange,
+    if (window.TradingView) {
+        new window.TradingView.widget({
+            "autosize": true,
+            "symbol": tvSymbol,
             "interval": "D",
             "timezone": "Etc/UTC",
             "theme": "dark",
             "style": "1",
             "locale": "en",
-            "toolbar_bg": "#f1f3f6",
+            "toolbar_bg": "#1e222d",
             "enable_publishing": false,
             "hide_side_toolbar": false,
-            "allow_symbol_change": false,
-            "container_id": "tradingview-container"
-        });
-
-        // 2. TradingView Live Quote Widget
-        document.getElementById("tradingview-quote-container").innerHTML = "";
-        new TradingView.widget({
-            "width": "100%",
-            "height": 90,
-            "symbol": exchange,
-            "timezone": "Etc/UTC",
-            "theme": "dark",
-            "style": "1",
-            "locale": "en",
-            "toolbar_bg": "#f1f3f6",
-            "hide_top_toolbar": true,
-            "hide_legend": true,
-            "save_image": false,
-            "container_id": "tradingview-quote-container"
-        });
-
-        // 3. TradingView Technical Analysis Widget (Replaced Key Stats)
-        document.getElementById("tradingview-tech-container").innerHTML = "";
-        new TradingView.widget({
-            "width": "100%",
-            "height": 420,
-            "symbol": exchange,
-            "interval": "1D",
-            "timezone": "Etc/UTC",
-            "theme": "dark",
-            "style": "1",
-            "locale": "en",
-            "toolbar_bg": "#f1f3f6",
-            "enable_publishing": false,
-            "hide_top_toolbar": true,
-            "container_id": "tradingview-tech-container"
+            "allow_symbol_change": true,
+            "container_id": "tradingview-widget-container"
         });
     }
+}
 
-    function fetchNews(symbol) {
-        fetch(`/api/news/${symbol}`)
-            .then(res => res.json())
-            .then(data => {
-                const newsList = document.getElementById("newsList");
-                newsList.innerHTML = "";
-                document.getElementById("newsSentiment").textContent = data.overallSentiment || "Bullish";
-
-                data.articles.forEach(article => {
-                    const item = document.createElement("div");
-                    item.className = "news-item";
-                    item.innerHTML = `
-                        <a href="${article.link}" target="_blank" rel="noopener noreferrer">
-                            <strong>${article.publisher}</strong>
-                            <p>${article.title}</p>
-                        </a>
-                    `;
-                    newsList.appendChild(item);
-                });
-            });
+async function fetchAIAnalysis(symbol) {
+    const aiContainer = document.getElementById('ai-analysis-content');
+    if (aiContainer) {
+        aiContainer.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-info" role="status"></div><p class="mt-2 text-muted">Groq AI is analyzing live charts & price action...</p></div>`;
     }
 
-    function triggerAIAnalysis(symbol) {
-        runAiBtn.textContent = "Analyzing Live Chart Feeds...";
-        runAiBtn.disabled = true;
+    try {
+        const response = await fetch(`/api/analyze/${symbol}`);
+        const result = await response.json();
 
-        // Extract live price from TradingView or fallback to company endpoint
-        fetch(`/api/company/${symbol}`)
-            .then(res => res.json())
-            .then(data => {
-                return fetch(`/api/analyze/${symbol}?live_price=${data.currentPrice}`);
-            })
-            .then(res => res.json())
-            .then(aiData => {
-                runAiBtn.textContent = "🚀 Run Groq AI Analysis";
-                runAiBtn.disabled = false;
-
-                if (!aiData.error) {
-                    document.getElementById("aiPromptState").classList.add("hidden");
-                    document.getElementById("aiResultsContainer").classList.remove("hidden");
-                    updateAIUI(aiData);
-                } else {
-                    showMessage(`AI Error: ${aiData.error}`, true);
-                }
-            })
-            .catch(err => {
-                runAiBtn.textContent = "🚀 Run Groq AI Analysis";
-                runAiBtn.disabled = false;
-                showMessage("Failed to generate AI analytics.", true);
-            });
-    }
-
-    function updateAIUI(data) {
-        document.getElementById("aiConfidence").textContent = `${data.confidenceScore}%`;
-        document.getElementById("aiSummary").textContent = data.marketSummary;
-        document.getElementById("aiOutlook").textContent = data.currentTrend;
-
-        const targetPriceEl = document.getElementById("targetPrice");
-        const predictedRangeEl = document.getElementById("predictedRange");
-        const nextMoveReasoningEl = document.getElementById("nextMoveReasoning");
-        const predictedDirectionBadge = document.getElementById("predictedDirectionBadge");
-
-        if (data.nextMove) {
-            targetPriceEl.textContent = data.nextMove.targetPrice;
-            predictedRangeEl.textContent = data.nextMove.predictedRange;
-            nextMoveReasoningEl.textContent = data.nextMove.reasoning;
-            predictedDirectionBadge.textContent = data.nextMove.predictedDirection;
-            predictedDirectionBadge.className = `sentiment-badge ${data.nextMove.predictedDirection.toLowerCase() === 'bullish' ? 'buy' : data.nextMove.predictedDirection.toLowerCase() === 'bearish' ? 'sell' : 'neutral'}`;
+        if (result.error) {
+            if (aiContainer) aiContainer.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
+            return;
         }
 
-        const aiSentiment = document.getElementById("aiSentiment");
-        aiSentiment.textContent = data.recommendation;
-        aiSentiment.className = `sentiment-badge ${data.recommendation.toLowerCase()}`;
-
-        const posList = document.getElementById("positiveFactors");
-        posList.innerHTML = "";
-        (data.keyStrengths || []).forEach(strength => {
-            const li = document.createElement("li");
-            li.textContent = strength;
-            posList.appendChild(li);
-        });
-
-        const riskList = document.getElementById("riskFactors");
-        riskList.innerHTML = "";
-        (data.keyRisks || []).forEach(risk => {
-            const li = document.createElement("li");
-            li.textContent = risk;
-            riskList.appendChild(li);
-        });
+        renderAIAnalysis(result);
+    } catch (err) {
+        console.error('AI Analysis failed:', err);
+        if (aiContainer) aiContainer.innerHTML = `<div class="alert alert-danger">Failed to fetch AI analysis. Check API key configuration.</div>`;
     }
+}
 
-    // Initial load
-    loadAsset("BTC");
-});
+function renderAIAnalysis(data) {
+    const aiContainer = document.getElementById('ai-analysis-content');
+    if (!aiContainer) return;
+
+    const recColor = data.recommendation === 'BUY' ? 'success' : data.recommendation === 'SELL' ? 'danger' : 'warning';
+
+    aiContainer.innerHTML = `
+        <div class="row align-items-center mb-3">
+            <div class="col-6">
+                <span class="badge bg-${recColor} fs-6 px-3 py-2">${data.recommendation}</span>
+                <span class="ms-2 text-muted small">Confidence: <strong>${data.confidenceScore}%</strong></span>
+            </div>
+            <div class="col-6 text-end">
+                <span class="badge bg-secondary">Risk: ${data.riskLevel}</span>
+            </div>
+        </div>
+        <p class="market-summary text-light mb-2">${data.marketSummary}</p>
+        <p class="current-trend text-info small mb-3"><i class="bi bi-graph-up-arrow"></i> ${data.currentTrend}</p>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <h6 class="text-success small fw-bold">KEY STRENGTHS</h6>
+                <ul class="list-unstyled small text-muted">
+                    ${data.keyStrengths.map(s => `<li><i class="bi bi-check-circle text-success"></i> ${s}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-danger small fw-bold">KEY RISKS</h6>
+                <ul class="list-unstyled small text-muted">
+                    ${data.keyRisks.map(r => `<li><i class="bi bi-exclamation-circle text-danger"></i> ${r}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+
+        <div class="p-3 bg-dark rounded border border-secondary">
+            <div class="d-flex justify-content-between text-small mb-1">
+                <span>Predicted Direction: <strong class="text-white">${data.nextMove.predictedDirection}</strong></span>
+                <span>Target: <strong class="text-success">${data.nextMove.targetPrice}</strong></span>
+            </div>
+            <div class="text-muted small">
+                <em>Reasoning:</em> ${data.nextMove.reasoning}
+            </div>
+        </div>
+    `;
+}
