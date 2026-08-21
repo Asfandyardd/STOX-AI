@@ -17,7 +17,7 @@ def analyze_stock(symbol):
         
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
         )
         analysis_text = chat_completion.choices[0].message.content
         
@@ -47,7 +47,7 @@ def chat_stock():
         
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
         )
         answer = chat_completion.choices[0].message.content
         return jsonify({"answer": answer})
